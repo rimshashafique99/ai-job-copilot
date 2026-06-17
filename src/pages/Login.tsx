@@ -5,7 +5,6 @@ import {
   Lock,
   Eye,
   EyeOff,
-  Github,
   ArrowRight,
   Loader2,
 } from "lucide-react";
@@ -51,10 +50,6 @@ export default function Login() {
         <button className="auth-btn-social">
           <GoogleIcon />
           <span>Google</span>
-        </button>
-        <button className="auth-btn-social">
-          <Github size={16} className="text-text-primary" />
-          <span>GitHub</span>
         </button>
       </div>
 
