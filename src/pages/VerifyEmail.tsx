@@ -61,7 +61,7 @@ export default function VerifyEmail() {
     setLoading(true);
     await new Promise((r) => setTimeout(r, 1200));
     setLoading(false);
-    navigate("/email-verified");
+    navigate("/Dashboard");
   };
 
   const handleResend = async () => {

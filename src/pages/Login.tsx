@@ -1,14 +1,8 @@
 import { ChangeEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import {
-  Mail,
-  Lock,
-  Eye,
-  EyeOff,
-  ArrowRight,
-  Loader2,
-} from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, ArrowRight, Loader2 } from "lucide-react";
 import AuthLayout from "../components/AuthLayout";
+import { login } from "../lib/auth";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -27,10 +21,13 @@ export default function Login() {
       setError("Please fill in all fields.");
       return;
     }
+
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1200));
+    await new Promise((resolve) => setTimeout(resolve, 1200));
     setLoading(false);
-    navigate("/verify-email");
+
+    login();
+    navigate("/dashboard", { replace: true });
   };
 
   return (
