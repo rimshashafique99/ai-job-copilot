@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import JobInputPanel from '../components/JobinPutPanel';
 import AIOutputCard, { OutputType } from '../components/AIoutputCard';
-import { Wand2 } from 'lucide-react';
+// import { Wand2 } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -140,15 +140,15 @@ const Analyze: React.FC = () => {
   // Render
   // ---------------------------------------------------------------------------
   return (
-    <div className="min-h-screen bg-[#0f1117]">
+    <div>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
         {/* ---- Two-column layout ---- */}
         <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 lg:items-start">
 
           {/* Left: Job input panel */}
-          <div className="w-full lg:w-[320px] xl:w-[360px] shrink-0">
-            <div className="bg-[#1a1d2e] border border-white/[0.06] rounded-xl p-6 lg:sticky lg:top-6">
+          <div className="w-full lg:w-[320px] xl:w-[360px] shrink-0 animate-fade-up">
+            <div className="bg-white dark:bg-[#1a1d2e] border border-slate-200 dark:border-white/[0.06] rounded-xl p-6 lg:sticky lg:top-20 shadow-sm dark:shadow-none">
               <JobInputPanel
                 companyName={companyName}
                 jobDescription={jobDescription}
@@ -164,47 +164,52 @@ const Analyze: React.FC = () => {
           <div className="flex-1 min-w-0">
 
             {/* Empty state */}
-            {OUTPUT_ORDER.every((t) => !outputs[t].content && !outputs[t].isLoading) && (
+            {/* {OUTPUT_ORDER.every((t) => !outputs[t].content && !outputs[t].isLoading) && (
               <div className="hidden lg:flex flex-col items-center justify-center h-64 gap-3 text-center">
-                <div className="w-12 h-12 rounded-xl bg-indigo-500/10 flex items-center justify-center">
-                  <Wand2 size={20} className="text-indigo-400" />
+                <div className="w-12 h-12 rounded-xl bg-indigo-100 dark:bg-indigo-500/10 flex items-center justify-center">
+                  <Wand2 size={20} className="text-indigo-600 dark:text-indigo-400" />
                 </div>
-                <p className="text-slate-500 text-sm max-w-xs">
-                  Paste a job description on the left and click <span className="text-indigo-400 font-medium">Analyze</span> to generate all 4 outputs instantly.
+                <p className="text-slate-500 dark:text-slate-500 text-sm max-w-xs">
+                  Paste a job description on the left and click <span className="text-indigo-600 dark:text-indigo-400 font-medium">Analyze</span> to generate all 4 outputs instantly.
                 </p>
               </div>
-            )}
+            )} */}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {OUTPUT_ORDER.map((type) => (
-                <AIOutputCard
+              {OUTPUT_ORDER.map((type, i) => (
+                <div
                   key={type}
-                  type={type}
-                  content={outputs[type].content}
-                  isStreaming={outputs[type].isStreaming}
-                  isLoading={outputs[type].isLoading}
-                  onRegenerate={() => handleRegenerate(type)}
-                />
+                  className="animate-fade-up"
+                  style={{ animationDelay: `${i * 80}ms` }}
+                >
+                  <AIOutputCard
+                    type={type}
+                    content={outputs[type].content}
+                    isStreaming={outputs[type].isStreaming}
+                    isLoading={outputs[type].isLoading}
+                    onRegenerate={() => handleRegenerate(type)}
+                  />
+                </div>
               ))}
             </div>
 
             {/* Bottom upsell strip */}
-            <div className="mt-6 border border-white/[0.06] rounded-xl px-5 py-4 flex flex-col sm:flex-row items-center justify-between gap-3 bg-[#1a1d2e]">
+            {/* <div className="mt-6 border border-slate-200 dark:border-white/[0.06] rounded-xl px-5 py-4 flex flex-col sm:flex-row items-center justify-between gap-3 bg-white dark:bg-[#1a1d2e] shadow-sm dark:shadow-none">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-violet-500/15 flex items-center justify-center shrink-0">
-                  <Wand2 size={15} className="text-violet-400" />
+                <div className="w-8 h-8 rounded-lg bg-violet-100 dark:bg-violet-500/15 flex items-center justify-center shrink-0">
+                  <Wand2 size={15} className="text-violet-600 dark:text-violet-400" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-slate-200">Need a specific asset?</p>
+                  <p className="text-sm font-medium text-slate-800 dark:text-slate-200">Need a specific asset?</p>
                   <p className="text-xs text-slate-500">
                     Request custom technical summaries or interview prep notes.
                   </p>
                 </div>
               </div>
-              <button className="text-xs font-semibold text-indigo-400 hover:text-indigo-300 uppercase tracking-wider transition-colors whitespace-nowrap">
+              <button className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 uppercase tracking-wider transition-colors whitespace-nowrap">
                 Explore More Tools →
               </button>
-            </div>
+            </div> */}
 
           </div>
         </div>

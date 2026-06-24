@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MoreVertical, ExternalLink } from 'lucide-react';
+import { ExternalLink, Eye, Pencil, Trash2, ArrowRightLeft } from 'lucide-react';
+import ActionsMenu from './ActionsMenu';
 
 type Status = 'interviewing' | 'applied' | 'offer' | 'rejected';
 
@@ -49,10 +50,14 @@ const PLACEHOLDER_APPS: Application[] = [
 ];
 
 const STATUS_STYLES: Record<Status, string> = {
-  interviewing: 'bg-amber-400/10 text-amber-400 border border-amber-400/20',
-  applied:      'bg-sky-400/10 text-sky-400 border border-sky-400/20',
-  offer:        'bg-emerald-400/10 text-emerald-400 border border-emerald-400/20',
-  rejected:     'bg-rose-400/10 text-rose-400 border border-rose-400/20',
+  interviewing:
+    'bg-amber-100 text-amber-700 border border-amber-200 dark:bg-amber-400/10 dark:text-amber-400 dark:border-amber-400/20',
+  applied:
+    'bg-sky-100 text-sky-700 border border-sky-200 dark:bg-sky-400/10 dark:text-sky-400 dark:border-sky-400/20',
+  offer:
+    'bg-emerald-100 text-emerald-700 border border-emerald-200 dark:bg-emerald-400/10 dark:text-emerald-400 dark:border-emerald-400/20',
+  rejected:
+    'bg-rose-100 text-rose-700 border border-rose-200 dark:bg-rose-400/10 dark:text-rose-400 dark:border-rose-400/20',
 };
 
 const SCORE_COLOR = (score: number) => {
@@ -64,14 +69,28 @@ const SCORE_COLOR = (score: number) => {
 const RecentApplications: React.FC = () => {
   const navigate = useNavigate();
 
+  const buildActions = (app: Application) => [
+    { label: 'View Details', icon: <Eye size={15} />, onClick: () => navigate('/tracker') },
+    { label: 'Edit', icon: <Pencil size={15} /> },
+    { label: 'Change Status', icon: <ArrowRightLeft size={15} /> },
+    {
+      label: 'Delete',
+      icon: <Trash2 size={15} />,
+      danger: true,
+      onClick: () => window.confirm(`Remove your ${app.company} application?`),
+    },
+  ];
+
   return (
-    <div className="bg-[#1a1d2e] border border-white/[0.06] rounded-xl overflow-hidden">
+    <div className="bg-white dark:bg-[#1a1d2e] border border-slate-200 dark:border-white/[0.06] rounded-xl overflow-hidden shadow-sm dark:shadow-none">
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
-        <h2 className="text-white font-semibold text-base">Recent Applications</h2>
+      <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-white/[0.06]">
+        <h2 className="text-slate-900 dark:text-white font-semibold text-base">
+          Recent Applications
+        </h2>
         <button
           onClick={() => navigate('/tracker')}
-          className="text-xs text-indigo-400 hover:text-indigo-300 font-medium flex items-center gap-1 transition-colors"
+          className="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-medium flex items-center gap-1 transition-colors"
         >
           View All
           <ExternalLink size={11} />
@@ -82,7 +101,7 @@ const RecentApplications: React.FC = () => {
       <div className="hidden sm:block overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-white/[0.04]">
+            <tr className="border-b border-slate-100 dark:border-white/[0.04]">
               {['Company', 'Role', 'Date Applied', 'Status', 'Match Score', 'Actions'].map((h) => (
                 <th
                   key={h}
@@ -97,8 +116,10 @@ const RecentApplications: React.FC = () => {
             {PLACEHOLDER_APPS.map((app, idx) => (
               <tr
                 key={app.id}
-                className={`hover:bg-white/[0.02] transition-colors ${
-                  idx < PLACEHOLDER_APPS.length - 1 ? 'border-b border-white/[0.04]' : ''
+                className={`hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors ${
+                  idx < PLACEHOLDER_APPS.length - 1
+                    ? 'border-b border-slate-100 dark:border-white/[0.04]'
+                    : ''
                 }`}
               >
                 <td className="px-5 py-4">
@@ -108,14 +129,20 @@ const RecentApplications: React.FC = () => {
                     >
                       {app.companyInitial}
                     </div>
-                    <span className="text-sm text-slate-200 font-medium">{app.company}</span>
+                    <span className="text-sm text-slate-800 dark:text-slate-200 font-medium">
+                      {app.company}
+                    </span>
                   </div>
                 </td>
                 <td className="px-5 py-4">
-                  <span className="text-sm text-indigo-400 font-medium">{app.role}</span>
+                  <span className="text-sm text-indigo-600 dark:text-indigo-400 font-medium">
+                    {app.role}
+                  </span>
                 </td>
                 <td className="px-5 py-4">
-                  <span className="text-sm text-slate-400">{app.dateApplied}</span>
+                  <span className="text-sm text-slate-500 dark:text-slate-400">
+                    {app.dateApplied}
+                  </span>
                 </td>
                 <td className="px-5 py-4">
                   <span
@@ -126,19 +153,19 @@ const RecentApplications: React.FC = () => {
                 </td>
                 <td className="px-5 py-4">
                   <div className="flex items-center gap-2">
-                    <div className="w-24 h-1.5 rounded-full bg-white/10 overflow-hidden">
+                    <div className="w-24 h-1.5 rounded-full bg-slate-200 dark:bg-white/10 overflow-hidden">
                       <div
                         className={`h-full rounded-full ${SCORE_COLOR(app.matchScore)}`}
                         style={{ width: `${app.matchScore}%` }}
                       />
                     </div>
-                    <span className="text-xs font-semibold text-slate-300">{app.matchScore}%</span>
+                    <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                      {app.matchScore}%
+                    </span>
                   </div>
                 </td>
                 <td className="px-5 py-4">
-                  <button className="text-slate-500 hover:text-slate-300 transition-colors">
-                    <MoreVertical size={16} />
-                  </button>
+                  <ActionsMenu items={buildActions(app)} align="right" />
                 </td>
               </tr>
             ))}
@@ -147,7 +174,7 @@ const RecentApplications: React.FC = () => {
       </div>
 
       {/* Mobile cards */}
-      <div className="sm:hidden divide-y divide-white/[0.04]">
+      <div className="sm:hidden divide-y divide-slate-100 dark:divide-white/[0.04]">
         {PLACEHOLDER_APPS.map((app) => (
           <div key={app.id} className="p-4 flex flex-col gap-3">
             <div className="flex items-center justify-between">
@@ -158,26 +185,33 @@ const RecentApplications: React.FC = () => {
                   {app.companyInitial}
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-slate-200">{app.company}</p>
-                  <p className="text-xs text-indigo-400">{app.role}</p>
+                  <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
+                    {app.company}
+                  </p>
+                  <p className="text-xs text-indigo-600 dark:text-indigo-400">{app.role}</p>
                 </div>
               </div>
-              <span
-                className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${STATUS_STYLES[app.status]}`}
-              >
-                {app.status}
-              </span>
+              <div className="flex items-center gap-1">
+                <span
+                  className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${STATUS_STYLES[app.status]}`}
+                >
+                  {app.status}
+                </span>
+                <ActionsMenu items={buildActions(app)} align="right" />
+              </div>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-xs text-slate-500">{app.dateApplied}</span>
               <div className="flex items-center gap-2">
-                <div className="w-20 h-1.5 rounded-full bg-white/10 overflow-hidden">
+                <div className="w-20 h-1.5 rounded-full bg-slate-200 dark:bg-white/10 overflow-hidden">
                   <div
                     className={`h-full rounded-full ${SCORE_COLOR(app.matchScore)}`}
                     style={{ width: `${app.matchScore}%` }}
                   />
                 </div>
-                <span className="text-xs font-semibold text-slate-300">{app.matchScore}%</span>
+                <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                  {app.matchScore}%
+                </span>
               </div>
             </div>
           </div>

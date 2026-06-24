@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import PublicLayout from "./components/PublicLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
+import AppLayout from "./components/AppLayout";
 import LandingPage from "./pages/LandingPage";
 
 // Auth pages
@@ -15,6 +16,7 @@ import Dashboard from "./pages/Dashboard";
 import Analyze from "./pages/Analyze";
 import Tracker from "./pages/Tracker";
 import Profile from "./pages/Profile";
+import Settings from "./pages/Settings";
 
 export default function App() {
   return (
@@ -25,46 +27,27 @@ export default function App() {
           <Route path="/" element={<LandingPage />} />
         </Route>
 
-        {/* ─── Auth pages (use your AuthLayout) ─── */}
+        {/* ─── Auth pages ─── */}
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
 
-        {/* ─── App pages ─── */}
+        {/* ─── Authenticated app (shared AppLayout shell) ─── */}
         <Route
-          path="/dashboard"
           element={
             <ProtectedRoute>
-              <Dashboard />
+              <AppLayout />
             </ProtectedRoute>
           }
-        />
-        <Route
-          path="/analyze"
-          element={
-            <ProtectedRoute>
-              <Analyze />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/tracker"
-          element={
-            <ProtectedRoute>
-              <Tracker />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/profile"
-          element={
-            <ProtectedRoute>
-              <Profile />
-            </ProtectedRoute>
-          }
-        />
+        >
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/analyze" element={<Analyze />} />
+          <Route path="/tracker" element={<Tracker />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/settings" element={<Settings />} />
+        </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
