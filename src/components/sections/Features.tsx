@@ -49,6 +49,9 @@ export default function Features() {
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="text-center mb-14">
+          <span className="inline-block text-xs font-semibold uppercase tracking-[0.2em] text-indigo-600 dark:text-indigo-400 mb-3">
+            Features
+          </span>
           <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-gray-900 dark:text-white mb-4">
             Powerful Tools for Every Application
           </h2>
@@ -63,10 +66,10 @@ export default function Features() {
           {features.map((f) => (
             <div
               key={f.title}
-              className="group relative flex flex-col gap-4 p-6 rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 hover:border-gray-200 dark:hover:border-gray-700 hover:shadow-md transition-all duration-200"
+              className="group relative flex flex-col gap-4 p-6 rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 hover:border-indigo-200 dark:hover:border-indigo-800/60 hover:shadow-lg hover:shadow-indigo-100/50 dark:hover:shadow-black/30 hover:-translate-y-1 transition-all duration-200"
             >
               <div
-                className={`w-10 h-10 rounded-xl ${f.iconBg} flex items-center justify-center shrink-0`}
+                className={`w-10 h-10 rounded-xl ${f.iconBg} flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform`}
               >
                 <f.icon size={18} className={f.iconColor} strokeWidth={1.8} />
               </div>
