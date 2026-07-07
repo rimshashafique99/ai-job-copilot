@@ -19,7 +19,10 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        # Use `npm install` rather than `npm ci`: a known npm bug omits the
+        # cross-platform wasm optional deps (@emnapi/*) from the lockfile when
+        # it's generated on Windows, which makes `npm ci` reject it.
+        run: npm install --no-audit --no-fund
 
       - name: Typecheck
         run: npm run typecheck
