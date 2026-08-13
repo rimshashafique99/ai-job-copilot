@@ -5,14 +5,21 @@ import {
   useRef,
   useState,
 } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { MailCheck, ArrowLeft, Loader2, RefreshCw } from "lucide-react";
+import axios from "axios";
 import AuthLayout from "../components/AuthLayout";
+import { useAuth } from "../contexts/AuthContext";
 
 const OTP_LENGTH = 6;
 
 export default function VerifyEmail() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { verifyOtp, resendOtp } = useAuth();
+
+  const email = (location.state as { email?: string })?.email;
+
   const [otp, setOtp] = useState(Array(OTP_LENGTH).fill(""));
   const [loading, setLoading] = useState(false);
   const [resent, setResent] = useState(false);
@@ -20,8 +27,13 @@ export default function VerifyEmail() {
   const inputs = useRef<Array<HTMLInputElement | null>>([]);
 
   useEffect(() => {
+    if (!email) {
+      // someone landed here directly without signing up first
+      navigate("/signup", { replace: true });
+      return;
+    }
     inputs.current[0]?.focus();
-  }, []);
+  }, [email, navigate]);
 
   const handleChange = (i: number, val: string) => {
     const digit = val.replace(/\D/g, "").slice(-1);
@@ -58,23 +70,49 @@ export default function VerifyEmail() {
       setError("Please enter all 6 digits.");
       return;
     }
+    if (!email) return;
+
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1200));
-    setLoading(false);
-    navigate("/Dashboard");
+    setError("");
+    try {
+      await verifyOtp(email, code);
+      navigate("/dashboard", { replace: true });
+    } catch (err: unknown) {
+      const message = axios.isAxiosError(err)
+        ? typeof err.response?.data?.error === "string"
+          ? err.response.data.error
+          : undefined
+        : undefined;
+      setError(message || "Invalid or expired code. Please try again.");
+      setOtp(Array(OTP_LENGTH).fill(""));
+      inputs.current[0]?.focus();
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleResend = async () => {
+    if (!email) return;
     setResent(true);
+    setError("");
     setOtp(Array(OTP_LENGTH).fill(""));
-    inputs.current[0]?.focus();
-    await new Promise((r) => setTimeout(r, 2000));
-    setResent(false);
+    try {
+      await resendOtp(email);
+      inputs.current[0]?.focus();
+    } catch (err: unknown) {
+      const message = axios.isAxiosError(err)
+        ? typeof err.response?.data?.error === "string"
+          ? err.response.data.error
+          : undefined
+        : undefined;
+      setError(message || "Failed to resend code.");
+    } finally {
+      setTimeout(() => setResent(false), 2000);
+    }
   };
 
   return (
     <AuthLayout showSocialProof={false}>
-      {/* Icon */}
       <div className="flex flex-col items-center text-center mb-6">
         <div className="w-14 h-14 rounded-2xl bg-brand/10 flex items-center justify-center mb-4">
           <MailCheck size={26} className="text-brand" />
@@ -83,12 +121,12 @@ export default function VerifyEmail() {
           Check your email
         </h1>
         <p className="text-sm text-text-secondary mt-2 max-w-xs">
-          We sent a 6-digit code to your email. Enter it below to verify your
-          account.
+          We sent a 6-digit code to{" "}
+          {email ? <strong>{email}</strong> : "your email"}. Enter it below to
+          verify your account.
         </p>
       </div>
 
-      {/* OTP inputs */}
       <div className="flex justify-center gap-2.5 mb-2" onPaste={handlePaste}>
         {otp.map((digit, i) => (
           <input

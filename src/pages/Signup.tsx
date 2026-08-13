@@ -8,12 +8,21 @@ import {
   EyeOff,
   ArrowRight,
   Loader2,
+  Briefcase,
 } from "lucide-react";
+import axios from "axios";
 import AuthLayout from "../components/AuthLayout";
+import { useAuth } from "../contexts/AuthContext";
 
 export default function Signup() {
   const navigate = useNavigate();
-  const [form, setForm] = useState({ name: "", email: "", password: "" });
+  const { signup } = useAuth(); // ← this line was missing
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    password: "",
+    targetRole: "",
+  });
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -33,9 +42,24 @@ export default function Signup() {
       return;
     }
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1200));
-    setLoading(false);
-    navigate("/verify-email");
+    try {
+      await signup({
+        email: form.email,
+        password: form.password,
+        fullName: form.name,
+        targetRole: form.targetRole || undefined,
+      });
+      navigate("/verify-email", { state: { email: form.email } });
+    } catch (err: unknown) {
+      const message = axios.isAxiosError(err)
+        ? typeof err.response?.data?.error === "string"
+          ? err.response.data.error
+          : undefined
+        : undefined;
+      setError(message || "Signup failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const strength = getStrength(form.password);
@@ -58,7 +82,6 @@ export default function Signup() {
           <GoogleIcon />
           <span>Google</span>
         </button>
-    
       </div>
 
       {/* Divider */}
@@ -153,6 +176,23 @@ export default function Signup() {
         </div>
       </div>
 
+      <div>
+        <label className="auth-label">Target Role</label>
+        <div className="relative">
+          <Briefcase
+            size={15}
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted"
+          />
+          <input
+            name="targetRole"
+            type="text"
+            value={form.targetRole}
+            onChange={handleChange}
+            placeholder="e.g. Senior Frontend Developer"
+            className="auth-input auth-input-icon"
+          />
+        </div>
+      </div>
       {error && (
         <p className="mt-3 text-xs text-red-500 font-medium">{error}</p>
       )}

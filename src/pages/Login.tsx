@@ -2,7 +2,8 @@ import { ChangeEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Mail, Lock, Eye, EyeOff, ArrowRight, Loader2 } from "lucide-react";
 import AuthLayout from "../components/AuthLayout";
-import { login } from "../lib/auth";
+import { useAuth } from "../contexts/AuthContext";
+import axios from "axios";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -16,6 +17,8 @@ export default function Login() {
     setError("");
   };
 
+  const { login } = useAuth();
+
   const handleSubmit = async () => {
     if (!form.email || !form.password) {
       setError("Please fill in all fields.");
@@ -23,11 +26,19 @@ export default function Login() {
     }
 
     setLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 1200));
-    setLoading(false);
-
-    login();
-    navigate("/dashboard", { replace: true });
+    try {
+      await login(form.email, form.password);
+      navigate("/dashboard", { replace: true });
+    } catch (err: unknown) {
+      const message = axios.isAxiosError(err)
+        ? typeof err.response?.data?.error === "string"
+          ? err.response.data.error
+          : undefined
+        : undefined;
+      setError(message || "Login failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

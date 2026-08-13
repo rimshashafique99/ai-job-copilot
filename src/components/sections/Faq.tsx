@@ -12,7 +12,7 @@ const faqs = [
   },
   {
     q: "Which AI models do you use?",
-    a: "We use industry-leading large language models, including Opus 4.8, selected per task for the best balance of quality and speed. You always get human-sounding, persuasive output — never generic boilerplate.",
+    a: "We use Grok, a large language model (LLM) accessed through the Grok API, to power our AI capabilities. This helps us deliver fast, intelligent, and high-quality results tailored to each task.",
   },
   {
     q: "Is my data private?",
@@ -20,17 +20,17 @@ const faqs = [
   },
   {
     q: "Can I edit what the AI generates?",
-    a: "Absolutely. Everything is fully editable — treat the output as a strong first draft. Tweak the tone, swap details, and make it yours before you send.",
+    a: "Absolutely. Everything is fully editable treat the output as a strong first draft. Tweak the tone, swap details, and make it yours before you send.",
   },
   {
     q: "Do I need to pay to get started?",
-    a: "No. You can create a free account and generate your first tailored applications without entering a card. Upgrade only when you need higher volume.",
+    a: "No. You can create a free account and generate your first tailored applications without entering a card.",
   },
 ];
 
 export default function Faq() {
   return (
-    <section className="py-20 sm:py-28 px-4 bg-white dark:bg-gray-950">
+    <section className="py-10 sm:py-5 px-4 bg-white dark:bg-gray-950">
       <div className="max-w-3xl mx-auto">
         {/* Header */}
         <div className="text-center mb-12">
@@ -38,7 +38,7 @@ export default function Faq() {
             FAQ
           </span>
           <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-gray-900 dark:text-white mb-4">
-            Questions, answered
+            Got Questions? We Have Answers
           </h2>
           <p className="text-gray-500 dark:text-gray-400 text-base leading-relaxed">
             Everything you need to know before you get started.
