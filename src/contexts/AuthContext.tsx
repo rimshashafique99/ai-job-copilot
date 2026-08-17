@@ -29,6 +29,7 @@ interface AuthContextValue {
   resendOtp: (email: string) => Promise<void>;
   logout: () => Promise<void>;
   refetchUser: () => Promise<void>;
+  loginWithGoogle: (idToken: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -76,7 +77,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function resendOtp(email: string) {
     await api.post("/auth/resend-otp", { email });
   }
-
+async function loginWithGoogle(idToken: string) {
+  const res = await api.post("/auth/google", { idToken });
+  setUser(res.data.data.user);
+}
   async function logout() {
     await api.post("/auth/logout");
     setUser(null);
@@ -84,7 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, login, signup, verifyOtp, resendOtp, logout, refetchUser }}
+      value={{ user, loading, login, signup, verifyOtp, resendOtp, logout, refetchUser, loginWithGoogle }}
     >
       {children}
     </AuthContext.Provider>
