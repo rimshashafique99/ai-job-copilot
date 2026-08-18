@@ -94,12 +94,17 @@ const { signup, loginWithGoogle } = useAuth();
       </div>
 
       {/* Social buttons */}
-      <div className="flex gap-3 mb-5">
+     <div className="flex justify-center mb-5">
+ 
   <GoogleLogin
     onSuccess={handleGoogleSuccess}
     onError={() => setError("Google sign-in failed. Please try again.")}
+    theme="outline"
+    shape="pill"
+    size="large"
   />
 </div>
+ 
 
       {/* Divider */}
       <div className="auth-divider">
@@ -193,9 +198,9 @@ const { signup, loginWithGoogle } = useAuth();
         </div>
       </div>
 
-      <div>
+      <div className="mt-3">
         <label className="auth-label">Target Role</label>
-        <div className="relative">
+        <div className="relative  " >
           <Briefcase
             size={15}
             className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted"

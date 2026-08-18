@@ -8,13 +8,14 @@ import {
   Loader2,
   SendHorizonal,
 } from "lucide-react";
+import axios from "axios";
 import AuthLayout from "../components/AuthLayout";
+import api from "../services/api";
 
 export default function ForgotPassword() {
-  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
-  const [sent, setSent] = useState(false);
+  const navigate = useNavigate();
   const [error, setError] = useState("");
 
   const handleSubmit = async () => {
@@ -27,12 +28,18 @@ export default function ForgotPassword() {
       return;
     }
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1200));
+    setError("");
+   try {
+    await api.post("/auth/forgot-password", { email });
+    navigate("/reset-password", { state: { email } });
+  } catch (err: unknown) {
+    const message = axios.isAxiosError(err) ? err.response?.data?.error : undefined;
+    setError(message || "Something went wrong. Please try again.");
+  } finally {
     setLoading(false);
-    setSent(true);
-  };
+  }
 
-  if (sent) {
+
     return (
       <AuthLayout showSocialProof={false}>
         <div className="flex flex-col items-center text-center py-4">
@@ -40,23 +47,16 @@ export default function ForgotPassword() {
             <SendHorizonal size={26} className="text-green-500" />
           </div>
           <h1 className="text-2xl font-bold text-text-primary tracking-tight">
-            Email sent!
+            Check your email
           </h1>
           <p className="text-sm text-text-secondary mt-2 max-w-xs">
-            We've sent a password reset link to{" "}
-            <span className="font-semibold text-text-primary">{email}</span>.
-            Check your inbox.
+            If an account exists for{" "}
+            <span className="font-semibold text-text-primary">{email}</span>,
+            we've sent a password reset link. It expires in few minutes.
           </p>
-          <button
-            onClick={() => navigate("/reset-password")}
-            className="auth-btn-primary mt-6"
-          >
-            Open Reset Link
-            <ArrowRight size={15} />
-          </button>
           <Link
             to="/login"
-            className="inline-flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary transition-colors mt-4"
+            className="inline-flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary transition-colors mt-6"
           >
             <ArrowLeft size={14} />
             Back to Login
@@ -68,7 +68,6 @@ export default function ForgotPassword() {
 
   return (
     <AuthLayout showSocialProof={false}>
-      {/* Logo + heading */}
       <div className="flex flex-col items-center text-center mb-6">
         <div className="w-14 h-14 rounded-2xl bg-brand/10 flex items-center justify-center mb-4">
           <BriefcaseBusiness size={26} className="text-brand" />
@@ -77,7 +76,7 @@ export default function ForgotPassword() {
           Reset your password
         </h1>
         <p className="text-sm text-text-secondary mt-2 max-w-xs">
-          Enter your email address and we will send you a link to reset your
+          Enter your email address and we will send you OTP code to reset your
           password.
         </p>
       </div>
@@ -139,4 +138,6 @@ export default function ForgotPassword() {
       </div>
     </AuthLayout>
   );
-}
+
+};
+  

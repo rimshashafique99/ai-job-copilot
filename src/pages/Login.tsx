@@ -71,10 +71,13 @@ export default function Login() {
       </div>
 
       {/* Social buttons */}
-      <div className="flex gap-3 mb-5">
+      <div className="flex justify-center mb-5">
         <GoogleLogin
           onSuccess={handleGoogleSuccess}
           onError={() => setError("Google sign-in failed. Please try again.")}
+          theme="outline"
+          shape="pill"
+          size="large"
         />
       </div>
 
@@ -112,7 +115,7 @@ export default function Login() {
               to="/forgot-password"
               className="text-xs text-brand font-medium hover:text-brand-hover transition-colors"
             >
-              Forgot?
+              Forgot Password?
             </Link>
           </div>
           <div className="relative">
