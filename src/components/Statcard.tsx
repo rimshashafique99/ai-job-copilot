@@ -18,7 +18,7 @@ const StatCard: React.FC<StatCardProps> = ({
   accentColor = 'text-indigo-500 dark:text-indigo-400',
 }) => {
   return (
-    <div className="bg-white dark:bg-[#1a1d2e] border border-slate-200 dark:border-white/[0.06] rounded-xl p-5 flex flex-col gap-3 shadow-sm dark:shadow-none hover:shadow-md hover:-translate-y-0.5 hover:border-indigo-200 dark:hover:border-indigo-500/30 transition-all duration-200">
+    <div className="h-full bg-white dark:bg-[#1a1d2e] border border-slate-200 dark:border-white/[0.06] rounded-xl p-5 flex flex-col gap-3 shadow-sm dark:shadow-none hover:shadow-md hover:-translate-y-0.5 hover:border-indigo-200 dark:hover:border-indigo-500/30 transition-all duration-200">
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
           {label}
