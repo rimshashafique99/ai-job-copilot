@@ -3,10 +3,7 @@ import axios from "axios";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { FileUp, Download, Info } from "lucide-react";
 
-import {
-  profileService,
-  ProfileData,
-} from "../services/profileService";
+import { profileService, ProfileData } from "../services/profileService";
 
 type UpdateProfileResult = {
   user: ProfileData["user"];
@@ -23,11 +20,19 @@ type UploadCvResult = {
   profile: ProfileData["profile"];
 };
 
-function getDownloadUrl(cloudinaryUrl: string): string {
-  return cloudinaryUrl.replace(
-    "/upload/",
-    "/upload/fl_attachment/"
-  );
+type DeleteCvResult = {
+  profile: ProfileData["profile"];
+};
+
+function getDownloadUrl(
+  cloudinaryUrl: string,
+  fileName?: string | null,
+): string {
+  const base = (fileName || "cv")
+    .replace(/\.pdf$/i, "")
+    .replace(/[^a-zA-Z0-9_-]/g, "_");
+
+  return cloudinaryUrl.replace("/upload/", `/upload/fl_attachment:${base}/`);
 }
 
 const Profile: React.FC = () => {
@@ -49,7 +54,8 @@ const Profile: React.FC = () => {
 
   const [dragOver, setDragOver] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
-
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -70,16 +76,14 @@ const Profile: React.FC = () => {
     mutationFn: profileService.updateProfile,
 
     onSuccess: ({ user, profile }) => {
-      queryClient.setQueryData<ProfileData>(
-        ["profile"],
-        (old) =>
-          old
-            ? {
-                ...old,
-                user,
-                profile: profile ?? old.profile,
-              }
-            : old
+      queryClient.setQueryData<ProfileData>(["profile"], (old) =>
+        old
+          ? {
+              ...old,
+              user,
+              profile: profile ?? old.profile,
+            }
+          : old,
       );
 
       setSaveError(null);
@@ -92,47 +96,65 @@ const Profile: React.FC = () => {
 
     onError: (err: unknown) => {
       if (axios.isAxiosError(err)) {
-        setSaveError(
-          err.response?.data?.error ??
-            "Failed to update profile"
-        );
+        setSaveError(err.response?.data?.error ?? "Failed to update profile");
       } else {
         setSaveError("Failed to update profile");
       }
     },
   });
 
-  const uploadMutation = useMutation<
-    UploadCvResult,
-    unknown,
-    File
-  >({
+  const uploadMutation = useMutation<UploadCvResult, unknown, File>({
     mutationFn: profileService.uploadCv,
 
     onSuccess: ({ profile }) => {
-      queryClient.setQueryData<ProfileData>(
-        ["profile"],
-        (old) =>
-          old
-            ? {
-                ...old,
-                profile,
-              }
-            : old
+      queryClient.setQueryData<ProfileData>(["profile"], (old) =>
+        old
+          ? {
+              ...old,
+              profile,
+            }
+          : old,
       );
 
       setUploadError(null);
+      setDeleteError(null);
+     
     },
 
     onError: (err: unknown) => {
       if (axios.isAxiosError(err)) {
-        setUploadError(
-          err.response?.data?.error ??
-            "Failed to upload CV"
-        );
+        setUploadError(err.response?.data?.error ?? "Failed to upload CV");
       } else {
         setUploadError("Failed to upload CV");
       }
+    },
+  });
+
+  const deleteMutation = useMutation<DeleteCvResult, unknown, void>({
+    mutationFn: profileService.deleteCv,
+
+    onSuccess: ({ profile }) => {
+      queryClient.setQueryData<ProfileData>(["profile"], (old) =>
+        old
+          ? {
+              ...old,
+              profile,
+            }
+          : old,
+      );
+
+      setDeleteError(null);
+    
+    },
+
+    onError: (err: unknown) => {
+      if (axios.isAxiosError(err)) {
+        setDeleteError(err.response?.data?.error ?? "Failed to remove CV");
+      } else {
+        setDeleteError("Failed to remove CV");
+      }
+
+     
     },
   });
 
@@ -150,6 +172,7 @@ const Profile: React.FC = () => {
     }
 
     setUploadError(null);
+    setDeleteError(null);
     uploadMutation.mutate(file);
   };
 
@@ -162,6 +185,7 @@ const Profile: React.FC = () => {
   }
 
   const cvFileUrl = data.profile?.cv_file_url ?? null;
+  const cvFileName = data.profile?.cv_file_name ?? "Your CV";
   const cvUploaded = Boolean(data.profile?.cv_text);
 
   return (
@@ -226,41 +250,30 @@ const Profile: React.FC = () => {
             />
           </Field>
 
-          {saveError && (
-            <p className="text-xs text-rose-500">
-              {saveError}
-            </p>
-          )}
+          {saveError && <p className="text-xs text-rose-500">{saveError}</p>}
 
-          {saveSuccess && (
-            <p className="text-xs text-emerald-500">
-              Saved.
-            </p>
-          )}
+          {saveSuccess && <p className="text-xs text-emerald-500">Saved.</p>}
 
           <div className="flex justify-end">
             <button
               type="button"
               onClick={() => updateMutation.mutate(form)}
-              disabled={
-                updateMutation.isPending || !form.fullName
-              }
+              disabled={updateMutation.isPending || !form.fullName}
               className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white text-sm font-medium px-5 py-2.5 rounded-lg transition-colors"
             >
-              {updateMutation.isPending
-                ? "Saving…"
-                : "Save Changes"}
+              {updateMutation.isPending ? "Saving…" : "Save Changes"}
             </button>
           </div>
         </SectionCard>
 
+     
         {/* CV Upload */}
         <SectionCard
           title="Your CV"
           action={
             cvFileUrl ? (
               <a
-                href={getDownloadUrl(cvFileUrl)}
+                href={getDownloadUrl(cvFileUrl, cvFileName)}
                 className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors"
               >
                 <Download size={14} />
@@ -300,9 +313,15 @@ const Profile: React.FC = () => {
               {uploadMutation.isPending
                 ? "Uploading…"
                 : cvUploaded
-                ? "CV uploaded — click to replace"
-                : "Click to upload or drag and drop"}
+                  ? "CV uploaded — click to replace"
+                  : "Upload your CV"}
             </p>
+
+            {!cvUploaded && (
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Click to upload or drag and drop
+              </p>
+            )}
 
             <p className="text-xs text-slate-400 dark:text-slate-500">
               PDF up to 5MB
@@ -313,16 +332,52 @@ const Profile: React.FC = () => {
               type="file"
               accept=".pdf"
               className="hidden"
-              onChange={(e) =>
-                handleFile(e.target.files?.[0])
-              }
+              onChange={(e) => handleFile(e.target.files?.[0])}
             />
           </button>
 
+          {/* Uploaded file */}
+          {cvFileUrl && (
+            <div className="flex items-center justify-between gap-4 rounded-lg border border-slate-200 dark:border-white/[0.06] px-4 py-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 rounded-lg bg-indigo-100 dark:bg-indigo-500/15 flex items-center justify-center shrink-0">
+                  <FileUp
+                    size={16}
+                    className="text-indigo-600 dark:text-indigo-400"
+                  />
+                </div>
+
+                <div className="min-w-0">
+                  <p
+                    className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate"
+                    title={cvFileName}
+                  >
+                    {cvFileName}
+                  </p>
+
+                  <p className="text-xs text-slate-400 dark:text-slate-500">
+                    Your uploaded CV
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => deleteMutation.mutate()}
+                disabled={deleteMutation.isPending}
+                className="text-xs font-medium text-slate-400 hover:text-rose-500 disabled:opacity-60 transition-colors shrink-0"
+              >
+                {deleteMutation.isPending ? "Removing…" : "Remove"}
+              </button>
+            </div>
+          )}
+
           {uploadError && (
-            <p className="text-xs text-rose-500">
-              {uploadError}
-            </p>
+            <p className="text-xs text-rose-500">{uploadError}</p>
+          )}
+
+          {deleteError && (
+            <p className="text-xs text-rose-500">{deleteError}</p>
           )}
 
           <div className="flex items-start gap-2 rounded-lg bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.06] px-3.5 py-3">
@@ -333,8 +388,7 @@ const Profile: React.FC = () => {
 
             <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
               Our AI uses your CV to tailor cover letters and optimize your
-              applications. Ensure your document is up-to-date for best
-              results.
+              applications. Ensure your document is up-to-date for best results.
             </p>
           </div>
         </SectionCard>

@@ -7,13 +7,13 @@ export interface ProfileUser {
   target_role: string | null;
   created_at: string;
 }
-
 export interface ProfileRecord {
   id: string;
   user_id: string;
   cv_text: string | null;
   cv_file_url: string | null;
-  summary: string | null;   // add this line
+  cv_file_name: string | null;
+  summary: string | null;
   updated_at: string;
 }
 export interface ProfileData {
@@ -41,6 +41,10 @@ updateProfile: async (payload: {
     const { data } = await api.post("/profile/cv", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     });
+    return data.data;
+  },
+   deleteCv: async (): Promise<{ profile: ProfileRecord }> => {
+    const { data } = await api.delete("/profile/cv");
     return data.data;
   },
 };
