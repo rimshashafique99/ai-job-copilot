@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Plus,
   Calendar,
@@ -18,6 +19,7 @@ import ApplicationFormModal, {
   type ApplicationFormValues,
   type Stage,
 } from "../components/ApplicationFormModal";
+import api from "../services/api";
 
 // ---------------------------------------------------------------------------
 // Types & data
@@ -32,6 +34,38 @@ interface Application {
   stage: Stage;
 }
 
+// Raw shape returned by the backend (snake_case Postgres row)
+interface JobApplicationRow {
+  id: string;
+  user_id: string;
+  role: string | null;
+  company_name: string;
+  job_title: string | null;
+  job_description: string | null;
+  job_link: string | null;
+  tag: string | null;
+  stage: string;
+  interview_date: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+interface CreateTrackerPayload {
+  role?: string;
+  companyName: string;
+  stage: Stage;
+  tag?: string;
+  jobLink?: string;
+}
+
+interface UpdateTrackerPayload {
+  role?: string;
+  companyName?: string;
+  stage?: Stage;
+  tag?: string;
+  jobLink?: string;
+}
+
 const STAGES: { id: Stage; label: string; dot: string }[] = [
   { id: "applied", label: "Applied", dot: "bg-sky-500" },
   { id: "interviewing", label: "Interviewing", dot: "bg-amber-500" },
@@ -39,16 +73,28 @@ const STAGES: { id: Stage; label: string; dot: string }[] = [
   { id: "rejected", label: "Rejected", dot: "bg-rose-500" },
 ];
 
-const today = () =>
-  new Date().toLocaleDateString("en-US", { month: "short", day: "2-digit" });
+const formatDate = (iso: string) =>
+  new Date(iso).toLocaleDateString("en-US", { month: "short", day: "2-digit" });
 
-const INITIAL_APPS: Application[] = [
-  { id: "a1", role: "Senior Frontend Engineer", company: "Stripe", addedOn: "Oct 24", stage: "applied", link: "https://stripe.com/jobs" },
-  { id: "a2", role: "Product Designer", company: "Airbnb", addedOn: "Oct 22", stage: "applied" },
-  { id: "i1", role: "Staff Software Engineer", company: "Linear", addedOn: "Oct 19", badge: "Round 2", stage: "interviewing", link: "https://linear.app/careers" },
-  { id: "o1", role: "Full Stack Developer", company: "Vercel", addedOn: "Oct 15", stage: "offer" },
-  { id: "r1", role: "Data Scientist", company: "Meta", addedOn: "Oct 03", stage: "rejected" },
-];
+// Falls back to "applied" for any stage value the board doesn't render
+// (e.g. the backend's "saved" default) so a stray row can't crash byStage.
+function mapRowToApplication(row: JobApplicationRow): Application {
+  const knownStage = STAGES.some((s) => s.id === row.stage) ? (row.stage as Stage) : "applied";
+  return {
+    id: row.id,
+    role: row.role || row.job_title || "Untitled Role",
+    company: row.company_name,
+    addedOn: formatDate(row.created_at),
+    badge: row.tag ?? undefined,
+    link: row.job_link ?? undefined,
+    stage: knownStage,
+  };
+}
+
+async function fetchTracker(): Promise<Application[]> {
+  const res = await api.get<{ success: boolean; data: JobApplicationRow[] }>("/tracker");
+  return res.data.data.map(mapRowToApplication);
+}
 
 type FormState =
   | { open: false }
@@ -59,7 +105,19 @@ type FormState =
 // Page
 // ---------------------------------------------------------------------------
 const Tracker: React.FC = () => {
-  const [apps, setApps] = useState<Application[]>(INITIAL_APPS);
+  const queryClient = useQueryClient();
+
+  const {
+    data: apps = [],
+    isLoading,
+    isError,
+  } = useQuery({
+    queryKey: ["tracker"],
+    queryFn: fetchTracker,
+    staleTime: 60000,
+    retry: 1,
+  });
+
   const [form, setForm] = useState<FormState>({ open: false });
   const [deleteTarget, setDeleteTarget] = useState<Application | null>(null);
   const [clearTarget, setClearTarget] = useState<Stage | null>(null);
@@ -79,68 +137,96 @@ const Tracker: React.FC = () => {
     return map;
   }, [apps]);
 
-  const [activity, setActivity] = useState<{ id: number; text: string; time: string }[]>([
-    { id: 1, text: "Moved **Staff Engineer** to Interviewing", time: "10:42 AM" },
-    { id: 2, text: "Added **Product Designer** at Airbnb", time: "Yesterday" },
-  ]);
+  const [activity, setActivity] = useState<{ id: number; text: string; time: string }[]>([]);
 
   const logActivity = (text: string) =>
     setActivity((prev) => [{ id: Date.now(), text, time: "Just now" }, ...prev].slice(0, 6));
 
+  // ---- Mutations ----
+  const createMutation = useMutation({
+    mutationFn: (payload: CreateTrackerPayload) => api.post("/tracker", payload),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["tracker"] }),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: UpdateTrackerPayload }) =>
+      api.patch(`/tracker/${id}`, payload),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["tracker"] }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => api.delete(`/tracker/${id}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["tracker"] }),
+  });
+
+  const moveMutation = useMutation({
+    mutationFn: ({ id, stage }: { id: string; stage: Stage }) =>
+      api.patch(`/tracker/${id}`, { stage }),
+    onMutate: async ({ id, stage }) => {
+      await queryClient.cancelQueries({ queryKey: ["tracker"] });
+      const previous = queryClient.getQueryData<Application[]>(["tracker"]);
+      queryClient.setQueryData<Application[]>(["tracker"], (old) =>
+        old ? old.map((a) => (a.id === id ? { ...a, stage } : a)) : old
+      );
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) queryClient.setQueryData(["tracker"], context.previous);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["tracker"] });
+    },
+  });
+
   // ---- CRUD ----
   const submitForm = (values: ApplicationFormValues) => {
     if (form.open && form.mode === "edit") {
-      setApps((prev) =>
-        prev.map((a) =>
-          a.id === form.app.id
-            ? {
-                ...a,
-                role: values.role,
-                company: values.company,
-                stage: values.stage,
-                badge: values.badge || undefined,
-                link: values.link || undefined,
-              }
-            : a
-        )
-      );
-      logActivity(`Updated **${values.role}** at ${values.company}`);
-    } else {
-      setApps((prev) => [
-        ...prev,
+      updateMutation.mutate(
         {
-          id: `app-${Date.now()}`,
-          role: values.role,
-          company: values.company,
-          stage: values.stage,
-          badge: values.badge || undefined,
-          link: values.link || undefined,
-          addedOn: today(),
+          id: form.app.id,
+          payload: {
+            role: values.role,
+            companyName: values.company,
+            stage: values.stage,
+            tag: values.badge || undefined,
+            jobLink: values.link || undefined,
+          },
         },
-      ]);
-      logActivity(`Added **${values.role}** at ${values.company}`);
+        { onSuccess: () => logActivity(`Updated **${values.role}** at ${values.company}`) }
+      );
+    } else {
+      createMutation.mutate(
+        {
+          role: values.role,
+          companyName: values.company,
+          stage: values.stage,
+          tag: values.badge || undefined,
+          jobLink: values.link || undefined,
+        },
+        { onSuccess: () => logActivity(`Added **${values.role}** at ${values.company}`) }
+      );
     }
   };
 
   const deleteApp = (app: Application) => {
-    setApps((prev) => prev.filter((a) => a.id !== app.id));
-    logActivity(`Removed **${app.role}** at ${app.company}`);
+    deleteMutation.mutate(app.id, {
+      onSuccess: () => logActivity(`Removed **${app.role}** at ${app.company}`),
+    });
   };
 
-  const clearStage = (stage: Stage) => {
+  const clearStage = async (stage: Stage) => {
     const label = STAGES.find((s) => s.id === stage)?.label ?? stage;
-    setApps((prev) => prev.filter((a) => a.stage !== stage));
+    const ids = byStage[stage].map((a) => a.id);
+    await Promise.all(ids.map((id) => deleteMutation.mutateAsync(id)));
     logActivity(`Cleared the **${label}** column`);
   };
 
   const moveApp = (id: string, stage: Stage) => {
-    setApps((prev) => {
-      const app = prev.find((a) => a.id === id);
-      if (!app || app.stage === stage) return prev;
-      const label = STAGES.find((s) => s.id === stage)?.label ?? stage;
-      logActivity(`Moved **${app.role}** to ${label}`);
-      return prev.map((a) => (a.id === id ? { ...a, stage } : a));
-    });
+    const app = apps.find((a) => a.id === id);
+    if (!app || app.stage === stage) return;
+    const label = STAGES.find((s) => s.id === stage)?.label ?? stage;
+    moveMutation.mutate({ id, stage });
+    logActivity(`Moved **${app.role}** to ${label}`);
   };
 
   return (
@@ -165,6 +251,15 @@ const Tracker: React.FC = () => {
             New Application
           </button>
         </div>
+
+        {isLoading && (
+          <div className="text-sm text-slate-400 dark:text-slate-500">Loading your pipeline…</div>
+        )}
+        {isError && (
+          <div className="text-sm text-rose-500">
+            Couldn't load your applications. Try refreshing the page.
+          </div>
+        )}
 
         {/* Kanban board */}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
@@ -198,8 +293,8 @@ const Tracker: React.FC = () => {
 
         {/* Footer insights */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <CopilotInsight />
-          <RecentActivity items={activity} />
+          {/* <CopilotInsight />
+          <RecentActivity items={activity} /> */}
         </div>
       </div>
 
@@ -483,22 +578,28 @@ function RecentActivity({ items }: { items: { id: number; text: string; time: st
         <span className="text-[11px] text-slate-400 dark:text-slate-500">Live</span>
       </div>
       <ul className="flex flex-col gap-3">
-        {items.map((item) => (
-          <li key={item.id} className="flex items-center justify-between gap-3">
-            <span
-              className="text-xs text-slate-600 dark:text-slate-300"
-              dangerouslySetInnerHTML={{
-                __html: item.text.replace(
-                  /\*\*(.+?)\*\*/g,
-                  '<span class="font-semibold text-slate-900 dark:text-white">$1</span>'
-                ),
-              }}
-            />
-            <span className="text-[11px] text-slate-400 dark:text-slate-500 shrink-0">
-              {item.time}
-            </span>
+        {items.length === 0 ? (
+          <li className="text-xs text-slate-400 dark:text-slate-500">
+            No activity yet — actions you take will show up here.
           </li>
-        ))}
+        ) : (
+          items.map((item) => (
+            <li key={item.id} className="flex items-center justify-between gap-3">
+              <span
+                className="text-xs text-slate-600 dark:text-slate-300"
+                dangerouslySetInnerHTML={{
+                  __html: item.text.replace(
+                    /\*\*(.+?)\*\*/g,
+                    '<span class="font-semibold text-slate-900 dark:text-white">$1</span>'
+                  ),
+                }}
+              />
+              <span className="text-[11px] text-slate-400 dark:text-slate-500 shrink-0">
+                {item.time}
+              </span>
+            </li>
+          ))
+        )}
       </ul>
     </div>
   );
