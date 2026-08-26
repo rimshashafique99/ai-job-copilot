@@ -4,8 +4,7 @@ import {
   Plus,
   Calendar,
   MoreHorizontal,
-  Sparkles,
-  TrendingUp,
+
   Eye,
   Pencil,
   Trash2,
@@ -137,10 +136,10 @@ const Tracker: React.FC = () => {
     return map;
   }, [apps]);
 
-  const [activity, setActivity] = useState<{ id: number; text: string; time: string }[]>([]);
+  // const [activity, setActivity] = useState<{ id: number; text: string; time: string }[]>([]);
 
-  const logActivity = (text: string) =>
-    setActivity((prev) => [{ id: Date.now(), text, time: "Just now" }, ...prev].slice(0, 6));
+  // const logActivity = (text: string) =>
+  //   setActivity((prev) => [{ id: Date.now(), text, time: "Just now" }, ...prev].slice(0, 6));
 
   // ---- Mutations ----
   const createMutation = useMutation({
@@ -192,7 +191,7 @@ const Tracker: React.FC = () => {
             jobLink: values.link || undefined,
           },
         },
-        { onSuccess: () => logActivity(`Updated **${values.role}** at ${values.company}`) }
+        { onSuccess: () => {} }
       );
     } else {
       createMutation.mutate(
@@ -203,30 +202,30 @@ const Tracker: React.FC = () => {
           tag: values.badge || undefined,
           jobLink: values.link || undefined,
         },
-        { onSuccess: () => logActivity(`Added **${values.role}** at ${values.company}`) }
+        { onSuccess: () => {} }
       );
     }
   };
 
   const deleteApp = (app: Application) => {
     deleteMutation.mutate(app.id, {
-      onSuccess: () => logActivity(`Removed **${app.role}** at ${app.company}`),
+      onSuccess: () => {}
     });
   };
 
   const clearStage = async (stage: Stage) => {
-    const label = STAGES.find((s) => s.id === stage)?.label ?? stage;
+    // const label = STAGES.find((s) => s.id === stage)?.label ?? stage;
     const ids = byStage[stage].map((a) => a.id);
     await Promise.all(ids.map((id) => deleteMutation.mutateAsync(id)));
-    logActivity(`Cleared the **${label}** column`);
+    // logActivity(`Cleared the **${label}** column`);
   };
 
   const moveApp = (id: string, stage: Stage) => {
     const app = apps.find((a) => a.id === id);
     if (!app || app.stage === stage) return;
-    const label = STAGES.find((s) => s.id === stage)?.label ?? stage;
+    // const label = STAGES.find((s) => s.id === stage)?.label ?? stage;
     moveMutation.mutate({ id, stage });
-    logActivity(`Moved **${app.role}** to ${label}`);
+    // logActivity(`Moved **${app.role}** to ${label}`);
   };
 
   return (
@@ -547,62 +546,62 @@ function KanbanCard({
 // ---------------------------------------------------------------------------
 // Footer widgets
 // ---------------------------------------------------------------------------
-function CopilotInsight() {
-  return (
-    <div className="bg-indigo-50 dark:bg-indigo-500/[0.07] border border-indigo-100 dark:border-indigo-500/20 rounded-xl p-5 flex flex-col gap-3">
-      <div className="flex items-start gap-3">
-        <div className="w-9 h-9 rounded-lg bg-indigo-100 dark:bg-indigo-500/15 flex items-center justify-center shrink-0">
-          <Sparkles size={16} className="text-indigo-600 dark:text-indigo-400" />
-        </div>
-        <div>
-          <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Copilot Insight</h3>
-          <p className="mt-1 text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-            Your interview conversion rate has increased by 15% this month. Try applying to
-            "Growth" stage companies next.
-          </p>
-        </div>
-      </div>
-      <div className="flex items-center gap-1.5 text-xs font-medium text-indigo-600 dark:text-indigo-400">
-        <TrendingUp size={13} />
-        Optimization Active
-      </div>
-    </div>
-  );
-}
+// function CopilotInsight() {
+//   return (
+//     <div className="bg-indigo-50 dark:bg-indigo-500/[0.07] border border-indigo-100 dark:border-indigo-500/20 rounded-xl p-5 flex flex-col gap-3">
+//       <div className="flex items-start gap-3">
+//         <div className="w-9 h-9 rounded-lg bg-indigo-100 dark:bg-indigo-500/15 flex items-center justify-center shrink-0">
+//           <Sparkles size={16} className="text-indigo-600 dark:text-indigo-400" />
+//         </div>
+//         <div>
+//           <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Copilot Insight</h3>
+//           <p className="mt-1 text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+//             Your interview conversion rate has increased by 15% this month. Try applying to
+//             "Growth" stage companies next.
+//           </p>
+//         </div>
+//       </div>
+//       <div className="flex items-center gap-1.5 text-xs font-medium text-indigo-600 dark:text-indigo-400">
+//         <TrendingUp size={13} />
+//         Optimization Active
+//       </div>
+//     </div>
+//   );
+// }
 
-function RecentActivity({ items }: { items: { id: number; text: string; time: string }[] }) {
-  return (
-    <div className="bg-white dark:bg-[#1a1d2e] border border-slate-200 dark:border-white/[0.06] rounded-xl p-5 shadow-sm dark:shadow-none">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Recent Activity</h3>
-        <span className="text-[11px] text-slate-400 dark:text-slate-500">Live</span>
-      </div>
-      <ul className="flex flex-col gap-3">
-        {items.length === 0 ? (
-          <li className="text-xs text-slate-400 dark:text-slate-500">
-            No activity yet — actions you take will show up here.
-          </li>
-        ) : (
-          items.map((item) => (
-            <li key={item.id} className="flex items-center justify-between gap-3">
-              <span
-                className="text-xs text-slate-600 dark:text-slate-300"
-                dangerouslySetInnerHTML={{
-                  __html: item.text.replace(
-                    /\*\*(.+?)\*\*/g,
-                    '<span class="font-semibold text-slate-900 dark:text-white">$1</span>'
-                  ),
-                }}
-              />
-              <span className="text-[11px] text-slate-400 dark:text-slate-500 shrink-0">
-                {item.time}
-              </span>
-            </li>
-          ))
-        )}
-      </ul>
-    </div>
-  );
-}
+// function RecentActivity({ items }: { items: { id: number; text: string; time: string }[] }) {
+//   return (
+//     <div className="bg-white dark:bg-[#1a1d2e] border border-slate-200 dark:border-white/[0.06] rounded-xl p-5 shadow-sm dark:shadow-none">
+//       <div className="flex items-center justify-between mb-3">
+//         <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Recent Activity</h3>
+//         <span className="text-[11px] text-slate-400 dark:text-slate-500">Live</span>
+//       </div>
+//       <ul className="flex flex-col gap-3">
+//         {items.length === 0 ? (
+//           <li className="text-xs text-slate-400 dark:text-slate-500">
+//             No activity yet — actions you take will show up here.
+//           </li>
+//         ) : (
+//           items.map((item) => (
+//             <li key={item.id} className="flex items-center justify-between gap-3">
+//               <span
+//                 className="text-xs text-slate-600 dark:text-slate-300"
+//                 dangerouslySetInnerHTML={{
+//                   __html: item.text.replace(
+//                     /\*\*(.+?)\*\*/g,
+//                     '<span class="font-semibold text-slate-900 dark:text-white">$1</span>'
+//                   ),
+//                 }}
+//               />
+//               <span className="text-[11px] text-slate-400 dark:text-slate-500 shrink-0">
+//                 {item.time}
+//               </span>
+//             </li>
+//           ))
+//         )}
+//       </ul>
+//     </div>
+//   );
+// }
 
 export default Tracker;
