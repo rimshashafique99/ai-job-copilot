@@ -3,18 +3,22 @@ import { Sparkles, Loader2 } from 'lucide-react';
 
 interface JobInputPanelProps {
   companyName: string;
+  role: string;
   jobDescription: string;
   isAnalyzing: boolean;
   onCompanyChange: (val: string) => void;
+  onRoleChange: (val: string) => void;
   onJDChange: (val: string) => void;
   onAnalyze: () => void;
 }
 
 const JobInputPanel: React.FC<JobInputPanelProps> = ({
   companyName,
+  role,
   jobDescription,
   isAnalyzing,
   onCompanyChange,
+  onRoleChange,
   onJDChange,
   onAnalyze,
 }) => {
@@ -39,6 +43,20 @@ const JobInputPanel: React.FC<JobInputPanelProps> = ({
           value={companyName}
           onChange={(e) => onCompanyChange(e.target.value)}
           placeholder="e.g. Acme Tech Corp"
+          className="w-full bg-slate-50 dark:bg-[#0f1117] border border-slate-200 dark:border-white/[0.08] rounded-lg px-3 py-2.5 text-sm text-slate-900 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/30 transition-all"
+        />
+      </div>
+
+      {/* Role / Job Title */}
+      <div className="flex flex-col gap-1.5">
+        <label className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+          Role / Job Title
+        </label>
+        <input
+          type="text"
+          value={role}
+          onChange={(e) => onRoleChange(e.target.value)}
+          placeholder="e.g. Senior Frontend Engineer"
           className="w-full bg-slate-50 dark:bg-[#0f1117] border border-slate-200 dark:border-white/[0.08] rounded-lg px-3 py-2.5 text-sm text-slate-900 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/30 transition-all"
         />
       </div>
