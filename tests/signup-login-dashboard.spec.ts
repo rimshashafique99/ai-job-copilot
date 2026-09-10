@@ -24,14 +24,12 @@ test.describe('Signup → Verify → Login → Dashboard', () => {
     await page.getByRole('button', { name: 'Create Account' }).click();
 
     // 2. Should land on verify-email page
-    await expect(page).toHaveURL(/VerifyEmail/);
+    await expect(page).toHaveURL(/verify-email/);
 
-    // 3. Fetch the real OTP from the DB
-    const result = await pool.query(
-      'SELECT otp_code FROM users WHERE email = $1',
-      [testEmail]
-    );
-    const otp = result.rows[0]?.otp_code;
+    // 3. Fetch the raw OTP via the test-only endpoint
+    const otpRes = await page.request.get(`http://localhost:5000/api/test/otp/${testEmail}`);
+    const otpBody = await otpRes.json();
+    const otp = otpBody.data.otp;
     expect(otp).toBeTruthy();
     expect(otp).toHaveLength(6);
 
@@ -42,11 +40,7 @@ test.describe('Signup → Verify → Login → Dashboard', () => {
     }
     await page.getByRole('button', { name: 'Verify Email' }).click();
 
-    // 5. Verifying should auto-redirect straight to dashboard (per VerifyEmail.tsx)
+    // 5. Verifying should auto-redirect straight to dashboard
     await expect(page).toHaveURL(/dashboard/);
-
-    // 6. (Optional but worth it) confirm login also works post-verification
-    //    Log out first if your app has a logout button — otherwise skip this
-    //    block and trust step 5. Leaving as a stretch goal for you to decide.
   });
 });
