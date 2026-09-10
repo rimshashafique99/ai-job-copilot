@@ -1,5 +1,11 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { GoogleOAuthProvider } from "@react-oauth/google";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  useParams,
+} from "react-router-dom";
 
 import PublicLayout from "./components/PublicLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -20,6 +26,10 @@ import Settings from "./pages/Settings";
 import { AuthProvider } from "./contexts/AuthContext";
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+function AnalyzeRoute() {
+  const { jobApplicationId } = useParams<{ jobApplicationId: string }>();
+  return <Analyze key={jobApplicationId} />;
+}
 
 export default function App() {
   return (
@@ -46,6 +56,10 @@ export default function App() {
             >
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/analyze" element={<Analyze />} />
+              <Route
+                path="/analyze/:jobApplicationId"
+                element={<AnalyzeRoute />}
+              />
               <Route path="/tracker" element={<Tracker />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/settings" element={<Settings />} />

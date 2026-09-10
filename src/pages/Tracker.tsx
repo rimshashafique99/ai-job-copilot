@@ -4,7 +4,6 @@ import {
   Plus,
   Calendar,
   MoreHorizontal,
-
   Eye,
   Pencil,
   Trash2,
@@ -19,7 +18,7 @@ import ApplicationFormModal, {
   type Stage,
 } from "../components/ApplicationFormModal";
 import api from "../services/api";
-
+import { useNavigate } from "react-router-dom";
 // ---------------------------------------------------------------------------
 // Types & data
 // ---------------------------------------------------------------------------
@@ -78,7 +77,9 @@ const formatDate = (iso: string) =>
 // Falls back to "applied" for any stage value the board doesn't render
 // (e.g. the backend's "saved" default) so a stray row can't crash byStage.
 function mapRowToApplication(row: JobApplicationRow): Application {
-  const knownStage = STAGES.some((s) => s.id === row.stage) ? (row.stage as Stage) : "applied";
+  const knownStage = STAGES.some((s) => s.id === row.stage)
+    ? (row.stage as Stage)
+    : "applied";
   return {
     id: row.id,
     role: row.role || row.job_title || "Untitled Role",
@@ -91,7 +92,9 @@ function mapRowToApplication(row: JobApplicationRow): Application {
 }
 
 async function fetchTracker(): Promise<Application[]> {
-  const res = await api.get<{ success: boolean; data: JobApplicationRow[] }>("/tracker");
+  const res = await api.get<{ success: boolean; data: JobApplicationRow[] }>(
+    "/tracker",
+  );
   return res.data.data.map(mapRowToApplication);
 }
 
@@ -105,6 +108,7 @@ type FormState =
 // ---------------------------------------------------------------------------
 const Tracker: React.FC = () => {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const {
     data: apps = [],
@@ -143,13 +147,19 @@ const Tracker: React.FC = () => {
 
   // ---- Mutations ----
   const createMutation = useMutation({
-    mutationFn: (payload: CreateTrackerPayload) => api.post("/tracker", payload),
+    mutationFn: (payload: CreateTrackerPayload) =>
+      api.post("/tracker", payload),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["tracker"] }),
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: UpdateTrackerPayload }) =>
-      api.patch(`/tracker/${id}`, payload),
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: string;
+      payload: UpdateTrackerPayload;
+    }) => api.patch(`/tracker/${id}`, payload),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["tracker"] }),
   });
 
@@ -165,12 +175,13 @@ const Tracker: React.FC = () => {
       await queryClient.cancelQueries({ queryKey: ["tracker"] });
       const previous = queryClient.getQueryData<Application[]>(["tracker"]);
       queryClient.setQueryData<Application[]>(["tracker"], (old) =>
-        old ? old.map((a) => (a.id === id ? { ...a, stage } : a)) : old
+        old ? old.map((a) => (a.id === id ? { ...a, stage } : a)) : old,
       );
       return { previous };
     },
     onError: (_err, _vars, context) => {
-      if (context?.previous) queryClient.setQueryData(["tracker"], context.previous);
+      if (context?.previous)
+        queryClient.setQueryData(["tracker"], context.previous);
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["tracker"] });
@@ -191,7 +202,7 @@ const Tracker: React.FC = () => {
             jobLink: values.link || undefined,
           },
         },
-        { onSuccess: () => {} }
+        { onSuccess: () => {} },
       );
     } else {
       createMutation.mutate(
@@ -202,14 +213,14 @@ const Tracker: React.FC = () => {
           tag: values.badge || undefined,
           jobLink: values.link || undefined,
         },
-        { onSuccess: () => {} }
+        { onSuccess: () => {} },
       );
     }
   };
 
   const deleteApp = (app: Application) => {
     deleteMutation.mutate(app.id, {
-      onSuccess: () => {}
+      onSuccess: () => {},
     });
   };
 
@@ -239,11 +250,16 @@ const Tracker: React.FC = () => {
             </h1>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
               Manage your active opportunities and track progress.
-              <span className="hidden sm:inline"> Drag a card to move it between stages.</span>
+              <span className="hidden sm:inline">
+                {" "}
+                Drag a card to move it between stages.
+              </span>
             </p>
           </div>
           <button
-            onClick={() => setForm({ open: true, mode: "add", defaultStage: "applied" })}
+            onClick={() =>
+              setForm({ open: true, mode: "add", defaultStage: "applied" })
+            }
             className="inline-flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2.5 rounded-lg transition-colors shrink-0"
           >
             <Plus size={16} />
@@ -252,7 +268,9 @@ const Tracker: React.FC = () => {
         </div>
 
         {isLoading && (
-          <div className="text-sm text-slate-400 dark:text-slate-500">Loading your pipeline…</div>
+          <div className="text-sm text-slate-400 dark:text-slate-500">
+            Loading your pipeline…
+          </div>
         )}
         {isError && (
           <div className="text-sm text-rose-500">
@@ -263,15 +281,24 @@ const Tracker: React.FC = () => {
         {/* Kanban board */}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           {STAGES.map((col, i) => (
-            <div key={col.id} className="animate-fade-up" style={{ animationDelay: `${i * 80}ms` }}>
+            <div
+              key={col.id}
+              className="animate-fade-up"
+              style={{ animationDelay: `${i * 80}ms` }}
+            >
               <KanbanColumn
                 label={col.label}
                 dot={col.dot}
                 cards={byStage[col.id]}
                 isDragOver={dragOverStage === col.id}
-                onAdd={() => setForm({ open: true, mode: "add", defaultStage: col.id })}
-                onClear={() => byStage[col.id].length > 0 && setClearTarget(col.id)}
+                onAdd={() =>
+                  setForm({ open: true, mode: "add", defaultStage: col.id })
+                }
+                onClear={() =>
+                  byStage[col.id].length > 0 && setClearTarget(col.id)
+                }
                 onEdit={(app) => setForm({ open: true, mode: "edit", app })}
+                onView={(app) => navigate(`/analyze/${app.id}`)}
                 onDelete={(app) => setDeleteTarget(app)}
                 onDragStartCard={(id) => setDragId(id)}
                 onDragEndCard={() => {
@@ -279,7 +306,9 @@ const Tracker: React.FC = () => {
                   setDragOverStage(null);
                 }}
                 onDragOver={() => setDragOverStage(col.id)}
-                onDragLeave={() => setDragOverStage((s) => (s === col.id ? null : s))}
+                onDragLeave={() =>
+                  setDragOverStage((s) => (s === col.id ? null : s))
+                }
                 onDrop={() => {
                   if (dragId) moveApp(dragId, col.id);
                   setDragId(null);
@@ -312,8 +341,8 @@ const Tracker: React.FC = () => {
                 link: form.app.link ?? "",
               }
             : form.open && form.mode === "add"
-            ? { stage: form.defaultStage }
-            : undefined
+              ? { stage: form.defaultStage }
+              : undefined
         }
         onClose={() => setForm({ open: false })}
         onSubmit={submitForm}
@@ -332,7 +361,8 @@ const Tracker: React.FC = () => {
               <span className="font-medium text-slate-700 dark:text-slate-200">
                 {deleteTarget.role}
               </span>{" "}
-              at {deleteTarget.company} will be permanently removed from your pipeline.
+              at {deleteTarget.company} will be permanently removed from your
+              pipeline.
             </>
           ) : null
         }
@@ -368,6 +398,7 @@ interface ColumnProps {
   onAdd: () => void;
   onClear: () => void;
   onEdit: (app: Application) => void;
+  onView: (app: Application) => void;
   onDelete: (app: Application) => void;
   onDragStartCard: (id: string) => void;
   onDragEndCard: () => void;
@@ -384,6 +415,7 @@ function KanbanColumn({
   onAdd,
   onClear,
   onEdit,
+  onView,
   onDelete,
   onDragStartCard,
   onDragEndCard,
@@ -424,8 +456,17 @@ function KanbanColumn({
           trigger={<MoreHorizontal size={16} />}
           buttonClassName="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors flex items-center justify-center w-6 h-6 rounded-md hover:bg-slate-200/60 dark:hover:bg-white/[0.06]"
           items={[
-            { label: "Add Application", icon: <Plus size={15} />, onClick: onAdd },
-            { label: "Clear Column", icon: <Archive size={15} />, danger: true, onClick: onClear },
+            {
+              label: "Add Application",
+              icon: <Plus size={15} />,
+              onClick: onAdd,
+            },
+            {
+              label: "Clear Column",
+              icon: <Archive size={15} />,
+              danger: true,
+              onClick: onClear,
+            },
           ]}
         />
       </div>
@@ -437,6 +478,7 @@ function KanbanColumn({
             key={card.id}
             card={card}
             onEdit={() => onEdit(card)}
+            onView={() => onView(card)}
             onDelete={() => onDelete(card)}
             onDragStart={() => onDragStartCard(card.id)}
             onDragEnd={onDragEndCard}
@@ -468,12 +510,14 @@ function KanbanColumn({
 function KanbanCard({
   card,
   onEdit,
+  onView,
   onDelete,
   onDragStart,
   onDragEnd,
 }: {
   card: Application;
   onEdit: () => void;
+  onView: () => void;
   onDelete: () => void;
   onDragStart: () => void;
   onDragEnd: () => void;
@@ -505,12 +549,19 @@ function KanbanCard({
           buttonClassName="text-slate-300 dark:text-slate-600 group-hover:text-slate-500 dark:group-hover:text-slate-400 transition-colors shrink-0 flex items-center justify-center w-6 h-6 rounded-md hover:bg-slate-100 dark:hover:bg-white/[0.06]"
           items={[
             { label: "Edit", icon: <Pencil size={15} />, onClick: onEdit },
-            { label: "View Details", icon: <Eye size={15} />, onClick: onEdit },
-            { label: "Delete", icon: <Trash2 size={15} />, danger: true, onClick: onDelete },
+            { label: "View Details", icon: <Eye size={15} />, onClick: onView },
+            {
+              label: "Delete",
+              icon: <Trash2 size={15} />,
+              danger: true,
+              onClick: onDelete,
+            },
           ]}
         />
       </div>
-      <p className="text-xs text-slate-500 dark:text-slate-400 pl-5">{card.company}</p>
+      <p className="text-xs text-slate-500 dark:text-slate-400 pl-5">
+        {card.company}
+      </p>
 
       {card.link && (
         <a
