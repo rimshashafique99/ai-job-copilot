@@ -91,7 +91,7 @@ export default function Login() {
       {/* Fields */}
       <div className="space-y-4">
         <div>
-          <label className="auth-label">Email Address</label>
+          <label className="auth-label" htmlFor="email">Email Address</label>
           <div className="relative">
             <Mail
               size={15}
@@ -100,6 +100,7 @@ export default function Login() {
             <input
               name="email"
               type="email"
+                id="email"
               value={form.email}
               onChange={handleChange}
               placeholder="name@company.com"
@@ -110,7 +111,9 @@ export default function Login() {
 
         <div>
           <div className="flex items-center justify-between mb-1.5">
-            <label className="auth-label mb-0">Password</label>
+            <label className="auth-label" htmlFor="password">
+              Password
+            </label>
             <Link
               to="/forgot-password"
               className="text-xs text-brand font-medium hover:text-brand-hover transition-colors"
@@ -125,6 +128,7 @@ export default function Login() {
             />
             <input
               name="password"
+              id="password"
               type={showPass ? "text" : "password"}
               value={form.password}
               onChange={handleChange}

@@ -1,5 +1,5 @@
-import React from 'react';
-import { Sparkles, Loader2 } from 'lucide-react';
+import React from "react";
+import { Sparkles, Loader2 } from "lucide-react";
 
 interface JobInputPanelProps {
   companyName: string;
@@ -27,18 +27,26 @@ const JobInputPanel: React.FC<JobInputPanelProps> = ({
   return (
     <div className="flex flex-col gap-5 h-full">
       <div>
-        <h1 className="text-xl font-bold text-slate-900 dark:text-white">Job Analysis</h1>
+        <h1 className="text-xl font-bold text-slate-900 dark:text-white">
+          Job Analysis
+        </h1>
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          Paste the job details below and let AI optimize your application strategy.
+          Paste the job details below and let AI optimize your application
+          strategy.
         </p>
       </div>
 
       {/* Company Name */}
+      {/* Company Name */}
       <div className="flex flex-col gap-1.5">
-        <label className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+        <label
+          htmlFor="company-name"
+          className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider"
+        >
           Company Name
         </label>
         <input
+          id="company-name"
           type="text"
           value={companyName}
           onChange={(e) => onCompanyChange(e.target.value)}
@@ -49,10 +57,14 @@ const JobInputPanel: React.FC<JobInputPanelProps> = ({
 
       {/* Role / Job Title */}
       <div className="flex flex-col gap-1.5">
-        <label className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+        <label
+          htmlFor="role-title"
+          className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider"
+        >
           Role / Job Title
         </label>
         <input
+          id="role-title"
           type="text"
           value={role}
           onChange={(e) => onRoleChange(e.target.value)}
@@ -63,10 +75,14 @@ const JobInputPanel: React.FC<JobInputPanelProps> = ({
 
       {/* Job Description */}
       <div className="flex flex-col gap-1.5 flex-1">
-        <label className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+        <label
+          htmlFor="job-description"
+          className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider"
+        >
           Paste Job Description here
         </label>
         <textarea
+          id="job-description"
           value={jobDescription}
           onChange={(e) => onJDChange(e.target.value)}
           placeholder="Paste the full job posting text here…"

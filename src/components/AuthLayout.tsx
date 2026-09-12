@@ -17,8 +17,8 @@ export default function AuthLayout({
   // showSocialProof = true,
 }: AuthLayoutProps) {
   return (
-    <div
-      className="min-h-screen bg-surface-subtle flex flex-col"
+   <div
+  className="min-h-screen bg-surface-subtle dark:bg-[#0f1117] flex flex-col"
       style={{
         backgroundImage:
           "radial-gradient(ellipse at 60% 0%, rgba(79,70,229,0.07) 0%, transparent 60%)",
@@ -38,7 +38,7 @@ export default function AuthLayout({
 
       {/* Card */}
       <div className="flex-1 flex flex-col items-center justify-center px-4 py-8">
-        <div className="w-full max-w-[420px] bg-white rounded-2xl shadow-card border border-surface-border/60 p-8">
+  <div className="w-full max-w-[420px] bg-white dark:bg-[#1a1d2e] rounded-2xl shadow-card border border-surface-border/60 dark:border-white/[0.06] p-8">
           {children}
         </div>
 
