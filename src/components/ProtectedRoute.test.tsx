@@ -3,6 +3,7 @@ import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import ProtectedRoute from './ProtectedRoute';
 import * as authModule from '../lib/auth';
+import { AuthProvider } from '../contexts/AuthContext'; // adjust path if different
 
 describe('ProtectedRoute', () => {
   beforeEach(() => {
@@ -13,19 +14,21 @@ describe('ProtectedRoute', () => {
     vi.spyOn(authModule, 'isAuthenticated').mockReturnValue(false);
 
     render(
-      <MemoryRouter initialEntries={['/dashboard']}>
-        <Routes>
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <div>Secret Dashboard</div>
-              </ProtectedRoute>
-            }
-          />
-          <Route path="/login" element={<div>Login Page</div>} />
-        </Routes>
-      </MemoryRouter>
+      <AuthProvider>
+        <MemoryRouter initialEntries={['/dashboard']}>
+          <Routes>
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute>
+                  <div>Secret Dashboard</div>
+                </ProtectedRoute>
+              }
+            />
+            <Route path="/login" element={<div>Login Page</div>} />
+          </Routes>
+        </MemoryRouter>
+      </AuthProvider>
     );
 
     expect(screen.getByText('Login Page')).toBeInTheDocument();
@@ -36,19 +39,21 @@ describe('ProtectedRoute', () => {
     vi.spyOn(authModule, 'isAuthenticated').mockReturnValue(true);
 
     render(
-      <MemoryRouter initialEntries={['/dashboard']}>
-        <Routes>
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <div>Secret Dashboard</div>
-              </ProtectedRoute>
-            }
-          />
-          <Route path="/login" element={<div>Login Page</div>} />
-        </Routes>
-      </MemoryRouter>
+      <AuthProvider>
+        <MemoryRouter initialEntries={['/dashboard']}>
+          <Routes>
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute>
+                  <div>Secret Dashboard</div>
+                </ProtectedRoute>
+              }
+            />
+            <Route path="/login" element={<div>Login Page</div>} />
+          </Routes>
+        </MemoryRouter>
+      </AuthProvider>
     );
 
     expect(screen.getByText('Secret Dashboard')).toBeInTheDocument();

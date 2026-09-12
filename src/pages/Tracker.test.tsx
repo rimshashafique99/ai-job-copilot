@@ -1,7 +1,17 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect } from 'vitest';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Tracker from './Tracker';
+
+function renderTracker() {
+  const queryClient = new QueryClient();
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <Tracker />
+    </QueryClientProvider>
+  );
+}
 
 // Grab a Kanban card by the role shown in its heading, then hand back its root
 // element so we can scope queries (its actions menu, etc.) to that card.
@@ -25,7 +35,7 @@ async function openCardMenu(
 describe('Tracker — application pipeline', () => {
   it('adds a new application through the modal', async () => {
     const user = userEvent.setup();
-    render(<Tracker />);
+    renderTracker(); 
 
     // Not there yet.
     expect(
@@ -48,7 +58,7 @@ describe('Tracker — application pipeline', () => {
 
   it('edits an existing application', async () => {
     const user = userEvent.setup();
-    render(<Tracker />);
+       renderTracker(); 
 
     const card = getCard('Product Designer');
     await openCardMenu(user, card, /^edit$/i);
@@ -67,8 +77,7 @@ describe('Tracker — application pipeline', () => {
 
   it('deletes an application after confirming', async () => {
     const user = userEvent.setup();
-    render(<Tracker />);
-
+      renderTracker(); 
     expect(
       screen.getByRole('heading', { name: 'Data Scientist' })
     ).toBeInTheDocument();
@@ -90,8 +99,7 @@ describe('Tracker — application pipeline', () => {
 
   it('does not delete when the confirmation is cancelled', async () => {
     const user = userEvent.setup();
-    render(<Tracker />);
-
+      renderTracker(); 
     const card = getCard('Full Stack Developer');
     await openCardMenu(user, card, /^delete$/i);
 

@@ -13,9 +13,14 @@ export default defineConfig({
     exclude: ['lucide-react'],
   },
   test: {
-    globals: true,
-    environment: 'jsdom',
-    setupFiles: './src/test/setup.ts',
-    css: true,
-  },
+  globals: true,
+  environment: 'jsdom',
+  setupFiles: './src/test/setup.ts',
+  css: true,
+  exclude: [
+    '**/node_modules/**',
+    '**/dist/**',
+    'tests/**',
+  ],
+},
 });
