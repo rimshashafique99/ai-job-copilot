@@ -27,7 +27,7 @@ export default function CtaBanner() {
               Ready to hack your hiring process?
             </h2>
             <p className="text-indigo-200 text-base sm:text-lg mb-8 max-w-md mx-auto">
-              Join 15,000+ developers landing interviews at Top Tech companies.
+             Join developers turning their skills into interviews at tech companies.
             </p>
             <Link
               to="/signup"

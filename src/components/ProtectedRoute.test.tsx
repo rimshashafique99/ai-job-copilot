@@ -2,15 +2,28 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import ProtectedRoute from './ProtectedRoute';
-import * as authModule from '../lib/auth';
+import { useAuth, type User } from '../contexts/AuthContext';
+
+vi.mock('../contexts/AuthContext', () => ({
+  useAuth: vi.fn(),
+}));
+
+const mockUseAuth = vi.mocked(useAuth);
+const authenticatedUser: User = {
+  id: 'user-1',
+  email: 'user@example.com',
+  full_name: 'Test User',
+  target_role: null,
+  created_at: '2026-01-01T00:00:00.000Z',
+};
 
 describe('ProtectedRoute', () => {
   beforeEach(() => {
-    localStorage.clear();
+    vi.resetAllMocks();
   });
 
   it('redirects to /login when the user is not authenticated', () => {
-    vi.spyOn(authModule, 'isAuthenticated').mockReturnValue(false);
+    mockUseAuth.mockReturnValue({ user: null, loading: false } as ReturnType<typeof useAuth>);
 
     render(
       <MemoryRouter initialEntries={['/dashboard']}>
@@ -33,7 +46,7 @@ describe('ProtectedRoute', () => {
   });
 
   it('renders children when the user is authenticated', () => {
-    vi.spyOn(authModule, 'isAuthenticated').mockReturnValue(true);
+    mockUseAuth.mockReturnValue({ user: authenticatedUser, loading: false } as ReturnType<typeof useAuth>);
 
     render(
       <MemoryRouter initialEntries={['/dashboard']}>

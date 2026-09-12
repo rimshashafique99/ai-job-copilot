@@ -1,10 +1,9 @@
 import React, { useMemo, useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Plus,
   Calendar,
   MoreHorizontal,
-  Sparkles,
-  TrendingUp,
   Eye,
   Pencil,
   Trash2,
@@ -18,7 +17,8 @@ import ApplicationFormModal, {
   type ApplicationFormValues,
   type Stage,
 } from "../components/ApplicationFormModal";
-
+import api from "../services/api";
+import { useNavigate } from "react-router-dom";
 // ---------------------------------------------------------------------------
 // Types & data
 // ---------------------------------------------------------------------------
@@ -32,6 +32,38 @@ interface Application {
   stage: Stage;
 }
 
+// Raw shape returned by the backend (snake_case Postgres row)
+interface JobApplicationRow {
+  id: string;
+  user_id: string;
+  role: string | null;
+  company_name: string;
+  job_title: string | null;
+  job_description: string | null;
+  job_link: string | null;
+  tag: string | null;
+  stage: string;
+  interview_date: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+interface CreateTrackerPayload {
+  role?: string;
+  companyName: string;
+  stage: Stage;
+  tag?: string;
+  jobLink?: string;
+}
+
+interface UpdateTrackerPayload {
+  role?: string;
+  companyName?: string;
+  stage?: Stage;
+  tag?: string;
+  jobLink?: string;
+}
+
 const STAGES: { id: Stage; label: string; dot: string }[] = [
   { id: "applied", label: "Applied", dot: "bg-sky-500" },
   { id: "interviewing", label: "Interviewing", dot: "bg-amber-500" },
@@ -39,16 +71,32 @@ const STAGES: { id: Stage; label: string; dot: string }[] = [
   { id: "rejected", label: "Rejected", dot: "bg-rose-500" },
 ];
 
-const today = () =>
-  new Date().toLocaleDateString("en-US", { month: "short", day: "2-digit" });
+const formatDate = (iso: string) =>
+  new Date(iso).toLocaleDateString("en-US", { month: "short", day: "2-digit" });
 
-const INITIAL_APPS: Application[] = [
-  { id: "a1", role: "Senior Frontend Engineer", company: "Stripe", addedOn: "Oct 24", stage: "applied", link: "https://stripe.com/jobs" },
-  { id: "a2", role: "Product Designer", company: "Airbnb", addedOn: "Oct 22", stage: "applied" },
-  { id: "i1", role: "Staff Software Engineer", company: "Linear", addedOn: "Oct 19", badge: "Round 2", stage: "interviewing", link: "https://linear.app/careers" },
-  { id: "o1", role: "Full Stack Developer", company: "Vercel", addedOn: "Oct 15", stage: "offer" },
-  { id: "r1", role: "Data Scientist", company: "Meta", addedOn: "Oct 03", stage: "rejected" },
-];
+// Falls back to "applied" for any stage value the board doesn't render
+// (e.g. the backend's "saved" default) so a stray row can't crash byStage.
+function mapRowToApplication(row: JobApplicationRow): Application {
+  const knownStage = STAGES.some((s) => s.id === row.stage)
+    ? (row.stage as Stage)
+    : "applied";
+  return {
+    id: row.id,
+    role: row.role || row.job_title || "Untitled Role",
+    company: row.company_name,
+    addedOn: formatDate(row.created_at),
+    badge: row.tag ?? undefined,
+    link: row.job_link ?? undefined,
+    stage: knownStage,
+  };
+}
+
+async function fetchTracker(): Promise<Application[]> {
+  const res = await api.get<{ success: boolean; data: JobApplicationRow[] }>(
+    "/tracker",
+  );
+  return res.data.data.map(mapRowToApplication);
+}
 
 type FormState =
   | { open: false }
@@ -59,7 +107,20 @@ type FormState =
 // Page
 // ---------------------------------------------------------------------------
 const Tracker: React.FC = () => {
-  const [apps, setApps] = useState<Application[]>(INITIAL_APPS);
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+
+  const {
+    data: apps = [],
+    isLoading,
+    isError,
+  } = useQuery({
+    queryKey: ["tracker"],
+    queryFn: fetchTracker,
+    staleTime: 60000,
+    retry: 1,
+  });
+
   const [form, setForm] = useState<FormState>({ open: false });
   const [deleteTarget, setDeleteTarget] = useState<Application | null>(null);
   const [clearTarget, setClearTarget] = useState<Stage | null>(null);
@@ -79,68 +140,103 @@ const Tracker: React.FC = () => {
     return map;
   }, [apps]);
 
-  const [activity, setActivity] = useState<{ id: number; text: string; time: string }[]>([
-    { id: 1, text: "Moved **Staff Engineer** to Interviewing", time: "10:42 AM" },
-    { id: 2, text: "Added **Product Designer** at Airbnb", time: "Yesterday" },
-  ]);
+  // const [activity, setActivity] = useState<{ id: number; text: string; time: string }[]>([]);
 
-  const logActivity = (text: string) =>
-    setActivity((prev) => [{ id: Date.now(), text, time: "Just now" }, ...prev].slice(0, 6));
+  // const logActivity = (text: string) =>
+  //   setActivity((prev) => [{ id: Date.now(), text, time: "Just now" }, ...prev].slice(0, 6));
+
+  // ---- Mutations ----
+  const createMutation = useMutation({
+    mutationFn: (payload: CreateTrackerPayload) =>
+      api.post("/tracker", payload),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["tracker"] }),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: string;
+      payload: UpdateTrackerPayload;
+    }) => api.patch(`/tracker/${id}`, payload),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["tracker"] }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => api.delete(`/tracker/${id}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["tracker"] }),
+  });
+
+  const moveMutation = useMutation({
+    mutationFn: ({ id, stage }: { id: string; stage: Stage }) =>
+      api.patch(`/tracker/${id}`, { stage }),
+    onMutate: async ({ id, stage }) => {
+      await queryClient.cancelQueries({ queryKey: ["tracker"] });
+      const previous = queryClient.getQueryData<Application[]>(["tracker"]);
+      queryClient.setQueryData<Application[]>(["tracker"], (old) =>
+        old ? old.map((a) => (a.id === id ? { ...a, stage } : a)) : old,
+      );
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous)
+        queryClient.setQueryData(["tracker"], context.previous);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["tracker"] });
+    },
+  });
 
   // ---- CRUD ----
   const submitForm = (values: ApplicationFormValues) => {
     if (form.open && form.mode === "edit") {
-      setApps((prev) =>
-        prev.map((a) =>
-          a.id === form.app.id
-            ? {
-                ...a,
-                role: values.role,
-                company: values.company,
-                stage: values.stage,
-                badge: values.badge || undefined,
-                link: values.link || undefined,
-              }
-            : a
-        )
-      );
-      logActivity(`Updated **${values.role}** at ${values.company}`);
-    } else {
-      setApps((prev) => [
-        ...prev,
+      updateMutation.mutate(
         {
-          id: `app-${Date.now()}`,
-          role: values.role,
-          company: values.company,
-          stage: values.stage,
-          badge: values.badge || undefined,
-          link: values.link || undefined,
-          addedOn: today(),
+          id: form.app.id,
+          payload: {
+            role: values.role,
+            companyName: values.company,
+            stage: values.stage,
+            tag: values.badge || undefined,
+            jobLink: values.link || undefined,
+          },
         },
-      ]);
-      logActivity(`Added **${values.role}** at ${values.company}`);
+        { onSuccess: () => {} },
+      );
+    } else {
+      createMutation.mutate(
+        {
+          role: values.role,
+          companyName: values.company,
+          stage: values.stage,
+          tag: values.badge || undefined,
+          jobLink: values.link || undefined,
+        },
+        { onSuccess: () => {} },
+      );
     }
   };
 
   const deleteApp = (app: Application) => {
-    setApps((prev) => prev.filter((a) => a.id !== app.id));
-    logActivity(`Removed **${app.role}** at ${app.company}`);
+    deleteMutation.mutate(app.id, {
+      onSuccess: () => {},
+    });
   };
 
-  const clearStage = (stage: Stage) => {
-    const label = STAGES.find((s) => s.id === stage)?.label ?? stage;
-    setApps((prev) => prev.filter((a) => a.stage !== stage));
-    logActivity(`Cleared the **${label}** column`);
+  const clearStage = async (stage: Stage) => {
+    // const label = STAGES.find((s) => s.id === stage)?.label ?? stage;
+    const ids = byStage[stage].map((a) => a.id);
+    await Promise.all(ids.map((id) => deleteMutation.mutateAsync(id)));
+    // logActivity(`Cleared the **${label}** column`);
   };
 
   const moveApp = (id: string, stage: Stage) => {
-    setApps((prev) => {
-      const app = prev.find((a) => a.id === id);
-      if (!app || app.stage === stage) return prev;
-      const label = STAGES.find((s) => s.id === stage)?.label ?? stage;
-      logActivity(`Moved **${app.role}** to ${label}`);
-      return prev.map((a) => (a.id === id ? { ...a, stage } : a));
-    });
+    const app = apps.find((a) => a.id === id);
+    if (!app || app.stage === stage) return;
+    // const label = STAGES.find((s) => s.id === stage)?.label ?? stage;
+    moveMutation.mutate({ id, stage });
+    // logActivity(`Moved **${app.role}** to ${label}`);
   };
 
   return (
@@ -154,11 +250,16 @@ const Tracker: React.FC = () => {
             </h1>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
               Manage your active opportunities and track progress.
-              <span className="hidden sm:inline"> Drag a card to move it between stages.</span>
+              <span className="hidden sm:inline">
+                {" "}
+                Drag a card to move it between stages.
+              </span>
             </p>
           </div>
           <button
-            onClick={() => setForm({ open: true, mode: "add", defaultStage: "applied" })}
+            onClick={() =>
+              setForm({ open: true, mode: "add", defaultStage: "applied" })
+            }
             className="inline-flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2.5 rounded-lg transition-colors shrink-0"
           >
             <Plus size={16} />
@@ -166,18 +267,38 @@ const Tracker: React.FC = () => {
           </button>
         </div>
 
+        {isLoading && (
+          <div className="text-sm text-slate-400 dark:text-slate-500">
+            Loading your pipeline…
+          </div>
+        )}
+        {isError && (
+          <div className="text-sm text-rose-500">
+            Couldn't load your applications. Try refreshing the page.
+          </div>
+        )}
+
         {/* Kanban board */}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           {STAGES.map((col, i) => (
-            <div key={col.id} className="animate-fade-up" style={{ animationDelay: `${i * 80}ms` }}>
+            <div
+              key={col.id}
+              className="animate-fade-up"
+              style={{ animationDelay: `${i * 80}ms` }}
+            >
               <KanbanColumn
                 label={col.label}
                 dot={col.dot}
                 cards={byStage[col.id]}
                 isDragOver={dragOverStage === col.id}
-                onAdd={() => setForm({ open: true, mode: "add", defaultStage: col.id })}
-                onClear={() => byStage[col.id].length > 0 && setClearTarget(col.id)}
+                onAdd={() =>
+                  setForm({ open: true, mode: "add", defaultStage: col.id })
+                }
+                onClear={() =>
+                  byStage[col.id].length > 0 && setClearTarget(col.id)
+                }
                 onEdit={(app) => setForm({ open: true, mode: "edit", app })}
+                onView={(app) => navigate(`/analyze/${app.id}`)}
                 onDelete={(app) => setDeleteTarget(app)}
                 onDragStartCard={(id) => setDragId(id)}
                 onDragEndCard={() => {
@@ -185,7 +306,9 @@ const Tracker: React.FC = () => {
                   setDragOverStage(null);
                 }}
                 onDragOver={() => setDragOverStage(col.id)}
-                onDragLeave={() => setDragOverStage((s) => (s === col.id ? null : s))}
+                onDragLeave={() =>
+                  setDragOverStage((s) => (s === col.id ? null : s))
+                }
                 onDrop={() => {
                   if (dragId) moveApp(dragId, col.id);
                   setDragId(null);
@@ -198,8 +321,8 @@ const Tracker: React.FC = () => {
 
         {/* Footer insights */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <CopilotInsight />
-          <RecentActivity items={activity} />
+          {/* <CopilotInsight />
+          <RecentActivity items={activity} /> */}
         </div>
       </div>
 
@@ -218,8 +341,8 @@ const Tracker: React.FC = () => {
                 link: form.app.link ?? "",
               }
             : form.open && form.mode === "add"
-            ? { stage: form.defaultStage }
-            : undefined
+              ? { stage: form.defaultStage }
+              : undefined
         }
         onClose={() => setForm({ open: false })}
         onSubmit={submitForm}
@@ -238,7 +361,8 @@ const Tracker: React.FC = () => {
               <span className="font-medium text-slate-700 dark:text-slate-200">
                 {deleteTarget.role}
               </span>{" "}
-              at {deleteTarget.company} will be permanently removed from your pipeline.
+              at {deleteTarget.company} will be permanently removed from your
+              pipeline.
             </>
           ) : null
         }
@@ -274,6 +398,7 @@ interface ColumnProps {
   onAdd: () => void;
   onClear: () => void;
   onEdit: (app: Application) => void;
+  onView: (app: Application) => void;
   onDelete: (app: Application) => void;
   onDragStartCard: (id: string) => void;
   onDragEndCard: () => void;
@@ -290,6 +415,7 @@ function KanbanColumn({
   onAdd,
   onClear,
   onEdit,
+  onView,
   onDelete,
   onDragStartCard,
   onDragEndCard,
@@ -330,8 +456,17 @@ function KanbanColumn({
           trigger={<MoreHorizontal size={16} />}
           buttonClassName="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors flex items-center justify-center w-6 h-6 rounded-md hover:bg-slate-200/60 dark:hover:bg-white/[0.06]"
           items={[
-            { label: "Add Application", icon: <Plus size={15} />, onClick: onAdd },
-            { label: "Clear Column", icon: <Archive size={15} />, danger: true, onClick: onClear },
+            {
+              label: "Add Application",
+              icon: <Plus size={15} />,
+              onClick: onAdd,
+            },
+            {
+              label: "Clear Column",
+              icon: <Archive size={15} />,
+              danger: true,
+              onClick: onClear,
+            },
           ]}
         />
       </div>
@@ -343,6 +478,7 @@ function KanbanColumn({
             key={card.id}
             card={card}
             onEdit={() => onEdit(card)}
+            onView={() => onView(card)}
             onDelete={() => onDelete(card)}
             onDragStart={() => onDragStartCard(card.id)}
             onDragEnd={onDragEndCard}
@@ -374,12 +510,14 @@ function KanbanColumn({
 function KanbanCard({
   card,
   onEdit,
+  onView,
   onDelete,
   onDragStart,
   onDragEnd,
 }: {
   card: Application;
   onEdit: () => void;
+  onView: () => void;
   onDelete: () => void;
   onDragStart: () => void;
   onDragEnd: () => void;
@@ -411,12 +549,19 @@ function KanbanCard({
           buttonClassName="text-slate-300 dark:text-slate-600 group-hover:text-slate-500 dark:group-hover:text-slate-400 transition-colors shrink-0 flex items-center justify-center w-6 h-6 rounded-md hover:bg-slate-100 dark:hover:bg-white/[0.06]"
           items={[
             { label: "Edit", icon: <Pencil size={15} />, onClick: onEdit },
-            { label: "View Details", icon: <Eye size={15} />, onClick: onEdit },
-            { label: "Delete", icon: <Trash2 size={15} />, danger: true, onClick: onDelete },
+            { label: "View Details", icon: <Eye size={15} />, onClick: onView },
+            {
+              label: "Delete",
+              icon: <Trash2 size={15} />,
+              danger: true,
+              onClick: onDelete,
+            },
           ]}
         />
       </div>
-      <p className="text-xs text-slate-500 dark:text-slate-400 pl-5">{card.company}</p>
+      <p className="text-xs text-slate-500 dark:text-slate-400 pl-5">
+        {card.company}
+      </p>
 
       {card.link && (
         <a
@@ -452,56 +597,62 @@ function KanbanCard({
 // ---------------------------------------------------------------------------
 // Footer widgets
 // ---------------------------------------------------------------------------
-function CopilotInsight() {
-  return (
-    <div className="bg-indigo-50 dark:bg-indigo-500/[0.07] border border-indigo-100 dark:border-indigo-500/20 rounded-xl p-5 flex flex-col gap-3">
-      <div className="flex items-start gap-3">
-        <div className="w-9 h-9 rounded-lg bg-indigo-100 dark:bg-indigo-500/15 flex items-center justify-center shrink-0">
-          <Sparkles size={16} className="text-indigo-600 dark:text-indigo-400" />
-        </div>
-        <div>
-          <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Copilot Insight</h3>
-          <p className="mt-1 text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-            Your interview conversion rate has increased by 15% this month. Try applying to
-            "Growth" stage companies next.
-          </p>
-        </div>
-      </div>
-      <div className="flex items-center gap-1.5 text-xs font-medium text-indigo-600 dark:text-indigo-400">
-        <TrendingUp size={13} />
-        Optimization Active
-      </div>
-    </div>
-  );
-}
+// function CopilotInsight() {
+//   return (
+//     <div className="bg-indigo-50 dark:bg-indigo-500/[0.07] border border-indigo-100 dark:border-indigo-500/20 rounded-xl p-5 flex flex-col gap-3">
+//       <div className="flex items-start gap-3">
+//         <div className="w-9 h-9 rounded-lg bg-indigo-100 dark:bg-indigo-500/15 flex items-center justify-center shrink-0">
+//           <Sparkles size={16} className="text-indigo-600 dark:text-indigo-400" />
+//         </div>
+//         <div>
+//           <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Copilot Insight</h3>
+//           <p className="mt-1 text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+//             Your interview conversion rate has increased by 15% this month. Try applying to
+//             "Growth" stage companies next.
+//           </p>
+//         </div>
+//       </div>
+//       <div className="flex items-center gap-1.5 text-xs font-medium text-indigo-600 dark:text-indigo-400">
+//         <TrendingUp size={13} />
+//         Optimization Active
+//       </div>
+//     </div>
+//   );
+// }
 
-function RecentActivity({ items }: { items: { id: number; text: string; time: string }[] }) {
-  return (
-    <div className="bg-white dark:bg-[#1a1d2e] border border-slate-200 dark:border-white/[0.06] rounded-xl p-5 shadow-sm dark:shadow-none">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Recent Activity</h3>
-        <span className="text-[11px] text-slate-400 dark:text-slate-500">Live</span>
-      </div>
-      <ul className="flex flex-col gap-3">
-        {items.map((item) => (
-          <li key={item.id} className="flex items-center justify-between gap-3">
-            <span
-              className="text-xs text-slate-600 dark:text-slate-300"
-              dangerouslySetInnerHTML={{
-                __html: item.text.replace(
-                  /\*\*(.+?)\*\*/g,
-                  '<span class="font-semibold text-slate-900 dark:text-white">$1</span>'
-                ),
-              }}
-            />
-            <span className="text-[11px] text-slate-400 dark:text-slate-500 shrink-0">
-              {item.time}
-            </span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
+// function RecentActivity({ items }: { items: { id: number; text: string; time: string }[] }) {
+//   return (
+//     <div className="bg-white dark:bg-[#1a1d2e] border border-slate-200 dark:border-white/[0.06] rounded-xl p-5 shadow-sm dark:shadow-none">
+//       <div className="flex items-center justify-between mb-3">
+//         <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Recent Activity</h3>
+//         <span className="text-[11px] text-slate-400 dark:text-slate-500">Live</span>
+//       </div>
+//       <ul className="flex flex-col gap-3">
+//         {items.length === 0 ? (
+//           <li className="text-xs text-slate-400 dark:text-slate-500">
+//             No activity yet — actions you take will show up here.
+//           </li>
+//         ) : (
+//           items.map((item) => (
+//             <li key={item.id} className="flex items-center justify-between gap-3">
+//               <span
+//                 className="text-xs text-slate-600 dark:text-slate-300"
+//                 dangerouslySetInnerHTML={{
+//                   __html: item.text.replace(
+//                     /\*\*(.+?)\*\*/g,
+//                     '<span class="font-semibold text-slate-900 dark:text-white">$1</span>'
+//                   ),
+//                 }}
+//               />
+//               <span className="text-[11px] text-slate-400 dark:text-slate-500 shrink-0">
+//                 {item.time}
+//               </span>
+//             </li>
+//           ))
+//         )}
+//       </ul>
+//     </div>
+//   );
+// }
 
 export default Tracker;

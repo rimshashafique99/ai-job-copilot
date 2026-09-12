@@ -11,7 +11,7 @@ import {
   User as UserIcon,
 } from "lucide-react";
 import { useTheme } from "../contexts/ThemeContext";
-import { logout } from "../lib/auth";
+import { useAuth } from "../contexts/AuthContext";
 import ConfirmDialog from "./ConfirmDialog";
 
 const NAV_LINKS = [
@@ -23,13 +23,13 @@ const NAV_LINKS = [
 
 export default function AppNavbar() {
   const { darkMode, toggleDark } = useTheme();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const [avatarOpen, setAvatarOpen] = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
   const avatarRef = useRef<HTMLDivElement>(null);
 
-  // Close avatar dropdown on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (avatarRef.current && !avatarRef.current.contains(e.target as Node)) {
@@ -40,8 +40,8 @@ export default function AppNavbar() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     navigate("/login", { replace: true });
   };
 
@@ -57,11 +57,12 @@ export default function AppNavbar() {
         : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
     }`;
 
+  const initial = user?.full_name?.charAt(0).toUpperCase() || "?";
+
   return (
     <header className="sticky top-0 z-50 bg-white/90 dark:bg-[#0f1117]/90 backdrop-blur-md border-b border-slate-200 dark:border-white/[0.06]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* Logo */}
           <Link to="/dashboard" className="flex items-center gap-2 group shrink-0">
             <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center">
               <Zap size={14} className="text-white" strokeWidth={2.5} />
@@ -71,7 +72,6 @@ export default function AppNavbar() {
             </span>
           </Link>
 
-          {/* Desktop nav */}
           <nav className="hidden md:flex items-center gap-7">
             {NAV_LINKS.map((link) => (
               <NavLink key={link.to} to={link.to} className={linkClass}>
@@ -80,7 +80,6 @@ export default function AppNavbar() {
             ))}
           </nav>
 
-          {/* Right actions */}
           <div className="flex items-center gap-2">
             <button
               onClick={toggleDark}
@@ -90,24 +89,23 @@ export default function AppNavbar() {
               {darkMode ? <Sun size={17} /> : <Moon size={17} />}
             </button>
 
-            {/* Avatar + dropdown */}
             <div className="relative" ref={avatarRef}>
               <button
                 onClick={() => setAvatarOpen((v) => !v)}
                 aria-label="Account menu"
                 className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-xs font-semibold ring-2 ring-transparent hover:ring-indigo-500/30 transition-all"
               >
-                R
+                {initial}
               </button>
 
               {avatarOpen && (
                 <div className="absolute right-0 mt-2 w-52 rounded-xl border border-slate-200 dark:border-white/[0.08] bg-white dark:bg-[#1a1d2e] shadow-lg dark:shadow-black/40 py-1.5 overflow-hidden origin-top-right animate-scale-in">
                   <div className="px-3 py-2 border-b border-slate-100 dark:border-white/[0.06]">
                     <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">
-                      Rimsha Shafique
+                      {user?.full_name || "Unknown"}
                     </p>
                     <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                      rimsha@example.com
+                      {user?.email || ""}
                     </p>
                   </div>
                   <DropdownItem
@@ -137,7 +135,6 @@ export default function AppNavbar() {
               )}
             </div>
 
-            {/* Mobile menu toggle */}
             <button
               onClick={() => setMenuOpen((v) => !v)}
               aria-label="Toggle menu"
@@ -149,7 +146,6 @@ export default function AppNavbar() {
         </div>
       </div>
 
-      {/* Mobile drawer */}
       {menuOpen && (
         <nav className="md:hidden border-t border-slate-200 dark:border-white/[0.06] bg-white dark:bg-[#0f1117] px-4 py-3 space-y-1">
           {NAV_LINKS.map((link) => (

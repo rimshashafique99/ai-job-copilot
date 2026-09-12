@@ -3,73 +3,55 @@ import { useNavigate } from 'react-router-dom';
 import { ExternalLink, Eye, Pencil, Trash2, ArrowRightLeft } from 'lucide-react';
 import ActionsMenu from './ActionsMenu';
 
-type Status = 'interviewing' | 'applied' | 'offer' | 'rejected';
+type Status = 'saved' | 'applied' | 'interviewing' | 'offer' | 'rejected';
 
-interface Application {
+interface ApplicationDTO {
   id: string;
-  company: string;
-  companyInitial: string;
-  companyColor: string;
-  role: string;
-  dateApplied: string;
-  status: Status;
-  matchScore: number;
+  company_name: string;
+  job_title: string;
+  created_at: string;
+  stage: Status;
 }
 
-const PLACEHOLDER_APPS: Application[] = [
-  {
-    id: '1',
-    company: 'Google',
-    companyInitial: 'G',
-    companyColor: 'bg-blue-500',
-    role: 'Senior Frontend Engineer',
-    dateApplied: 'Oct 24, 2024',
-    status: 'interviewing',
-    matchScore: 94,
-  },
-  {
-    id: '2',
-    company: 'Stripe',
-    companyInitial: 'S',
-    companyColor: 'bg-indigo-500',
-    role: 'Staff Software Engineer',
-    dateApplied: 'Oct 22, 2024',
-    status: 'applied',
-    matchScore: 88,
-  },
-  {
-    id: '3',
-    company: 'Airbnb',
-    companyInitial: 'A',
-    companyColor: 'bg-rose-500',
-    role: 'Product Developer',
-    dateApplied: 'Oct 19, 2024',
-    status: 'offer',
-    matchScore: 91,
-  },
-];
+interface RecentApplicationsProps {
+  applications: ApplicationDTO[];
+}
 
 const STATUS_STYLES: Record<Status, string> = {
-  interviewing:
-    'bg-amber-100 text-amber-700 border border-amber-200 dark:bg-amber-400/10 dark:text-amber-400 dark:border-amber-400/20',
+  saved:
+    'bg-slate-100 text-slate-600 border border-slate-200 dark:bg-white/[0.05] dark:text-slate-400 dark:border-white/[0.08]',
   applied:
     'bg-sky-100 text-sky-700 border border-sky-200 dark:bg-sky-400/10 dark:text-sky-400 dark:border-sky-400/20',
+  interviewing:
+    'bg-amber-100 text-amber-700 border border-amber-200 dark:bg-amber-400/10 dark:text-amber-400 dark:border-amber-400/20',
   offer:
     'bg-emerald-100 text-emerald-700 border border-emerald-200 dark:bg-emerald-400/10 dark:text-emerald-400 dark:border-emerald-400/20',
   rejected:
     'bg-rose-100 text-rose-700 border border-rose-200 dark:bg-rose-400/10 dark:text-rose-400 dark:border-rose-400/20',
 };
 
-const SCORE_COLOR = (score: number) => {
-  if (score >= 90) return 'bg-emerald-500';
-  if (score >= 75) return 'bg-amber-400';
-  return 'bg-rose-400';
+const DEFAULT_STATUS_STYLE =
+  'bg-slate-100 text-slate-600 border border-slate-200 dark:bg-white/[0.04] dark:text-slate-400 dark:border-white/[0.06]';
+
+const AVATAR_COLORS = [
+  'bg-blue-500', 'bg-indigo-500', 'bg-rose-500', 'bg-emerald-500',
+  'bg-amber-500', 'bg-violet-500', 'bg-sky-500',
+];
+
+const colorForCompany = (name: string) => {
+  const hash = name.split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
+  return AVATAR_COLORS[hash % AVATAR_COLORS.length];
 };
 
-const RecentApplications: React.FC = () => {
+const formatDate = (isoString: string) => {
+  const date = new Date(isoString);
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+};
+
+const RecentApplications: React.FC<RecentApplicationsProps> = ({ applications }) => {
   const navigate = useNavigate();
 
-  const buildActions = (app: Application) => [
+  const buildActions = (app: ApplicationDTO) => [
     { label: 'View Details', icon: <Eye size={15} />, onClick: () => navigate('/tracker') },
     { label: 'Edit', icon: <Pencil size={15} /> },
     { label: 'Change Status', icon: <ArrowRightLeft size={15} /> },
@@ -77,13 +59,22 @@ const RecentApplications: React.FC = () => {
       label: 'Delete',
       icon: <Trash2 size={15} />,
       danger: true,
-      onClick: () => window.confirm(`Remove your ${app.company} application?`),
+      onClick: () => window.confirm(`Remove your ${app.company_name} application?`),
     },
   ];
 
+  if (applications.length === 0) {
+    return (
+      <div className="bg-white dark:bg-[#1a1d2e] border border-slate-200 dark:border-white/[0.06] rounded-xl p-8 text-center shadow-sm dark:shadow-none">
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          No applications yet. Paste a job description on the Analyze page to get started.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white dark:bg-[#1a1d2e] border border-slate-200 dark:border-white/[0.06] rounded-xl overflow-hidden shadow-sm dark:shadow-none">
-      {/* Header */}
       <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-white/[0.06]">
         <h2 className="text-slate-900 dark:text-white font-semibold text-base">
           Recent Applications
@@ -97,12 +88,11 @@ const RecentApplications: React.FC = () => {
         </button>
       </div>
 
-      {/* Desktop table */}
       <div className="hidden sm:block overflow-x-auto">
         <table className="w-full">
           <thead>
             <tr className="border-b border-slate-100 dark:border-white/[0.04]">
-              {['Company', 'Role', 'Date Applied', 'Status', 'Match Score', 'Actions'].map((h) => (
+              {['Company', 'Role', 'Date Applied', 'Status', 'Actions'].map((h) => (
                 <th
                   key={h}
                   className="text-left px-5 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider"
@@ -113,11 +103,11 @@ const RecentApplications: React.FC = () => {
             </tr>
           </thead>
           <tbody>
-            {PLACEHOLDER_APPS.map((app, idx) => (
+            {applications.map((app, idx) => (
               <tr
                 key={app.id}
                 className={`hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors ${
-                  idx < PLACEHOLDER_APPS.length - 1
+                  idx < applications.length - 1
                     ? 'border-b border-slate-100 dark:border-white/[0.04]'
                     : ''
                 }`}
@@ -125,44 +115,31 @@ const RecentApplications: React.FC = () => {
                 <td className="px-5 py-4">
                   <div className="flex items-center gap-3">
                     <div
-                      className={`w-7 h-7 rounded-md ${app.companyColor} flex items-center justify-center text-white text-xs font-bold shrink-0`}
+                      className={`w-7 h-7 rounded-md ${colorForCompany(app.company_name)} flex items-center justify-center text-white text-xs font-bold shrink-0`}
                     >
-                      {app.companyInitial}
+                      {app.company_name?.[0]?.toUpperCase() ?? '?'}
                     </div>
                     <span className="text-sm text-slate-800 dark:text-slate-200 font-medium">
-                      {app.company}
+                      {app.company_name || 'Unknown'}
                     </span>
                   </div>
                 </td>
                 <td className="px-5 py-4">
                   <span className="text-sm text-indigo-600 dark:text-indigo-400 font-medium">
-                    {app.role}
+                    {app.job_title || 'Untitled role'}
                   </span>
                 </td>
                 <td className="px-5 py-4">
                   <span className="text-sm text-slate-500 dark:text-slate-400">
-                    {app.dateApplied}
+                    {formatDate(app.created_at)}
                   </span>
                 </td>
                 <td className="px-5 py-4">
                   <span
-                    className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${STATUS_STYLES[app.status]}`}
+                    className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${STATUS_STYLES[app.stage] ?? DEFAULT_STATUS_STYLE}`}
                   >
-                    {app.status}
+                    {app.stage}
                   </span>
-                </td>
-                <td className="px-5 py-4">
-                  <div className="flex items-center gap-2">
-                    <div className="w-24 h-1.5 rounded-full bg-slate-200 dark:bg-white/10 overflow-hidden">
-                      <div
-                        className={`h-full rounded-full ${SCORE_COLOR(app.matchScore)}`}
-                        style={{ width: `${app.matchScore}%` }}
-                      />
-                    </div>
-                    <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">
-                      {app.matchScore}%
-                    </span>
-                  </div>
                 </td>
                 <td className="px-5 py-4">
                   <ActionsMenu items={buildActions(app)} align="right" />
@@ -173,46 +150,36 @@ const RecentApplications: React.FC = () => {
         </table>
       </div>
 
-      {/* Mobile cards */}
       <div className="sm:hidden divide-y divide-slate-100 dark:divide-white/[0.04]">
-        {PLACEHOLDER_APPS.map((app) => (
+        {applications.map((app) => (
           <div key={app.id} className="p-4 flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div
-                  className={`w-8 h-8 rounded-md ${app.companyColor} flex items-center justify-center text-white text-xs font-bold`}
+                  className={`w-8 h-8 rounded-md ${colorForCompany(app.company_name)} flex items-center justify-center text-white text-xs font-bold`}
                 >
-                  {app.companyInitial}
+                  {app.company_name?.[0]?.toUpperCase() ?? '?'}
                 </div>
                 <div>
                   <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
-                    {app.company}
+                    {app.company_name || 'Unknown'}
                   </p>
-                  <p className="text-xs text-indigo-600 dark:text-indigo-400">{app.role}</p>
+                  <p className="text-xs text-indigo-600 dark:text-indigo-400">
+                    {app.job_title || 'Untitled role'}
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-1">
                 <span
-                  className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${STATUS_STYLES[app.status]}`}
+                  className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${STATUS_STYLES[app.stage] ?? DEFAULT_STATUS_STYLE}`}
                 >
-                  {app.status}
+                  {app.stage}
                 </span>
                 <ActionsMenu items={buildActions(app)} align="right" />
               </div>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-xs text-slate-500">{app.dateApplied}</span>
-              <div className="flex items-center gap-2">
-                <div className="w-20 h-1.5 rounded-full bg-slate-200 dark:bg-white/10 overflow-hidden">
-                  <div
-                    className={`h-full rounded-full ${SCORE_COLOR(app.matchScore)}`}
-                    style={{ width: `${app.matchScore}%` }}
-                  />
-                </div>
-                <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">
-                  {app.matchScore}%
-                </span>
-              </div>
+              <span className="text-xs text-slate-500">{formatDate(app.created_at)}</span>
             </div>
           </div>
         ))}
