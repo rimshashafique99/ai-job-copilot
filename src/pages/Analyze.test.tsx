@@ -6,12 +6,15 @@ import JobInputPanel from '../components/JobinPutPanel';
 // Wrapper that mimics what Analyze.tsx does for JobInputPanel
 const Wrapper = () => {
   const [jd, setJd] = useState('');
+  const [role, setRole] = useState('');
   return (
     <JobInputPanel
       companyName=""
+      role={role}
       jobDescription={jd}
       isAnalyzing={false}
       onCompanyChange={() => {}}
+      onRoleChange={setRole}
       onJDChange={setJd}
       onAnalyze={() => {}}
     />
